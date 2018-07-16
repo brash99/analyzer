@@ -443,18 +443,18 @@ TCanvas *plot_adc_fit(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=400, Int_t
 
 	// Creating three different graphs for used pixels, missing pixels, and general formatting.
 
-	gr = new TGraphErrors(NUMPIXEL,upixel,means,epixel,errors);
+	TGraphErrors *gr = new TGraphErrors(NUMPIXEL,upixel,means,epixel,errors);
 	gr->SetMarkerStyle(21);
 	gr->GetXaxis()->SetTitle("Pixel Number");
 	gr->GetYaxis()->SetTitle("Mean ADC Fit (Good TDC)");
 	gr->GetYaxis()->SetTitleOffset(1.4);
 	grtitle.Form("run_%d_pmt_%d_adc_mean",run,pmt);
 	gr->SetTitle(grtitle);
-	gr2 = new TGraphErrors(2,mpixel,mmean,mepixel,merror);
+	TGraphErrors *gr2 = new TGraphErrors(2,mpixel,mmean,mepixel,merror);
 	gr2->SetMarkerStyle(21);
 	gr2->SetMarkerColor(2);
 	gr2->SetTitle("");
-	gr3 = new TGraph(2,xline,yline);
+	TGraph *gr3 = new TGraph(2,xline,yline);
 	gr3->SetLineColor(2);
 	gr3->SetLineWidth(2);
 	gr3->SetLineStyle(2);
@@ -1201,7 +1201,7 @@ TCanvas *plot_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=300){
 	    TString lsig = Form("sigma = %1.1f",fitsig);
 	    
 	    // create the latex object to write
-	    TLatex tl;
+	    TLatex *tl;
 	    tl->SetTextSize(0.07);
 	    tl->SetTextAngle(0);
 	    tl->SetTextColor(1);
@@ -1307,7 +1307,7 @@ TCanvas *plot_mean_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=200){
 	  }
         }
 
-        gr = new TGraphErrors(NUMPADDLE,paddle,mean,epaddle,sigma);
+        TGraphErrors *gr = new TGraphErrors(NUMPADDLE,paddle,mean,epaddle,sigma);
         gr->SetMarkerStyle(21);
         gr->GetXaxis()->SetTitle("Paddle Number");
         gr->GetYaxis()->SetTitle("50% Threshold (Good TDC)");
@@ -1395,14 +1395,14 @@ TCanvas *plot_mean_adc(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=200){
 	  }
         }
 
-	gr = new TGraphErrors(NUMPIXEL,pixel,mean,epixel,sigma);
+	TGraphErrors *gr = new TGraphErrors(NUMPIXEL,pixel,mean,epixel,sigma);
 	gr->SetMarkerStyle(21);
 	gr->GetXaxis()->SetTitle("Pixel Number");
 	gr->GetYaxis()->SetTitle("Mean ADC (Good TDC)");
-	gr2 = new TGraphErrors(2,mpixel,mmean,mepixel,msigma);
+	TGraphErrors *gr2 = new TGraphErrors(2,mpixel,mmean,mepixel,msigma);
 	gr2->SetMarkerStyle(21);
 	gr2->SetMarkerColor(3);
-	gr3 = new TGraph(2,xline,yline);
+	TGraph *gr3 = new TGraph(2,xline,yline);
 	gr3->SetLineColor(3);
 	gr3->SetLineWidth(4);
 
