@@ -101,7 +101,7 @@ void effplot(){
   Int_t* thr4 = new Int_t[16];     // 775 V
   Int_t* thr5 = new Int_t[16];     // 800 V
 
-  Int_t* pixels = new Int_t[16];   // pixel number in PMT
+  Int_t* pixel = new Int_t[16];   // pixel number in PMT
   Int_t pmt = 0;   // tag for PMT number
   Int_t rn1, rn2, rn3, rn4, rn5;  // run numbers for root files
   Int_t hv1, hv2, hv3, hv4, hv5;  // HV settings
@@ -542,8 +542,21 @@ void effplot(){
   outf.close();
 
   TString gname;
-  TCanvas ec[14];
-  TGraph gc1, gc2, gc3, gc4, gc5, gc6, gc7, gc8, gc9, gc10, gc11, gc12, gc13, gc14;
+  TCanvas *ec[14];
+  TGraph *gc1;
+  TGraph *gc2;
+  TGraph *gc3;
+  TGraph *gc4;
+  TGraph *gc5;
+  TGraph *gc6;
+  TGraph *gc7;
+  TGraph *gc8;
+  TGraph *gc9;
+  TGraph *gc10;
+  TGraph *gc11;
+  TGraph *gc12;
+  TGraph *gc13;
+  TGraph *gc14;
   Int_t ecindex = 0;
   TF1 *fun1 = new TF1("fun1","pol3",700,800);
   fun1->SetLineColor(1);
