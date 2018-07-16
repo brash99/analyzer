@@ -1,0 +1,10 @@
+#!/bin/sh
+
+DATA_DIR=$REPLAY/rootfiles
+
+while [ "$1" != "" ]; do
+	RUN=`echo $1 | awk -F= '{print $1}'`
+	scp $DATA_DIR/scint_$RUN.root brash@ftp.jlab.org:/work/hallc/gep/brash/cdet/.
+	shift
+done
+echo "Done!"

@@ -1,27 +1,40 @@
 ###### Hall A SDK Main SConscript File #####
 ###### Author:	Edward Brash (brash@jlab.org) May 2017
 
+import os
 import re
-
+import SCons.Util
 Import ('baseenv')
 
 ######## ROOT Dictionaries #########
 
-rootuserdict = baseenv.subst('$MAIN_DIR')+'/RootUserDict.cxx'
+rootuserdict = baseenv.subst('$MAIN_DIR')+'/SBSDict.C'
+rootuserobj = baseenv.subst('$MAIN_DIR')+'/SBSDict.so'
 userheaders = Split("""
-UserApparatus.h    UserDetector.h     UserEvtHandler.h   UserModule.h       
-UserScintillator.h SkeletonModule.h   User_LinkDef.h
+FbusDetector.h FbusApparatus.h
+HcalDetector.h HcalApparatus.h
+CdetDetector.h CdetApparatus.h
+SBS_LinkDef.h
 """)
 baseenv.RootCint(rootuserdict,userheaders)
-baseenv.Clean(rootuserdict,re.sub(r'\.cxx\Z','_rdict.pcm',rootuserdict))
+baseenv.SharedObject(target = rootuserobj, source = rootuserdict)
 
 #######  Start of main SConscript ###########
 
 list = Split("""
-UserApparatus.cxx    UserModule.cxx
-UserDetector.cxx     UserEvtHandler.cxx   UserScintillator.cxx SkeletonModule.cxx
+FbusDetector.cxx FbusApparatus.cxx
+HcalDetector.cxx HcalApparatus.cxx
+CdetDetector.cxx CdetApparatus.cxx
 """)
 
-sotarget = 'User'
-srclib = baseenv.SharedLibrary(target = sotarget, source = list+[rootuserdict],\
-                               LIBS = [''], LIBPATH = [''])
+sotarget = 'SBS'
+srclib = baseenv.SharedLibrary(target = sotarget, source = list+['SBSDict.so'],SHLIBPREFIX='lib',LIBS=[''])
+print ('Source shared library = %s\n' % srclib)
+
+linkbase = baseenv.subst('$SHLIBPREFIX')+sotarget
+
+cleantarget = linkbase+'.so'
+
+print ('cleantarget = %s\n' % cleantarget)
+
+Clean(srclib,cleantarget)

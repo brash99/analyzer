@@ -1,0 +1,10 @@
+#!/bin/sh
+
+DATA_DIR=$ANALYZER/replay/rootfiles
+
+while [ "$1" != "" ]; do
+	RUN=`echo $1 | awk -F= '{print $1}'`
+	scp brash@ftp.jlab.org:/work/hallc/gep/brash/cdet/scint_$RUN.root $DATA_DIR/.
+	shift
+done
+echo "Done!"

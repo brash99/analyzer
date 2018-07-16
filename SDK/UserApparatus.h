@@ -1,5 +1,5 @@
-#ifndef Podd_UserApparatus_h_
-#define Podd_UserApparatus_h_
+#ifndef ROOT_UserApparatus
+#define ROOT_UserApparatus
 
 //////////////////////////////////////////////////////////////////////////
 //

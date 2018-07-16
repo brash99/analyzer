@@ -1,0 +1,1458 @@
+			
+			Logbook for CDet Data M1-R
+
+*********************************************************************************
+*********************************************************************************
+
+Runs to Delete			Description
+
+*********************************************************************************
+*********************************************************************************
+
+< 1052				Junk used to figure out daq
+
+1052-1125			Junk, "coda crashing" phase, files too large 
+				to analyze, not documented, setting voltages,
+				"seg fault" phase, testing daq signals
+
+1126				Used to determine tdc/adc match up problem
+
+1127-1151			Junk, not documented, tests
+
+1153-1156			Junk, tests
+
+1158-1167			Junk, tests, setting voltages
+
+1169-1175			Junk, tests, checking cables, checking ninos
+
+1177-1181			Junk, not documented
+
+1182				Junk, tests on ninos
+
+1183-1187			Junk, not documented
+
+1189				Junk, not documented
+
+1204				Junk, tests
+
+1206-1209			Junk, testing sheilded cables, bad connections,
+				low event numbers
+
+1213				Junk, no events recorded
+
+1215-1216, 1218			Junk, tests with pulser for cables
+
+1221-1229, 1231-1232		Junk, checking new cables
+
+1235-1239			Junk, testing pmt voltage for pmt 12, testing
+				pmt 3 channel 15 with pulsar
+
+1241-1247, 1249-1250		Junk, testing signal wires from pmt to nino
+				for pmt 3, and power supply for pmt 12
+
+1252-1254, 1258			Junk, ROC14 unresponsive, checking missing
+				channels, and checking replaced nino
+
+1262-1267			Junk, checking source of pixel 13 malfunction
+				in POS#3
+
+1268-1269			Completed 5/09/17, description below		
+
+1271				Completed 5/10/17, description below
+	
+*********************************************************************************
+*********************************************************************************
+
+Runs		Start		Description				End
+
+*********************************************************************************
+*********************************************************************************
+
+1152		2/15/17		M1-R, 500000 events			2/16/17
+
+1157		2/17/17		M1-R, 500000 events			2/18/17
+
+1168		2/20/17		M1-R, 500000 events, *perfect		2/21/17
+
+1176		2/22/17		M1-R, 500000 events, *perfect		2/23/17
+
+---------------------------------------------------------------------------------
+				
+1188		2/24/17		      *Pulser tests			2/24/17
+
+---------------------------------------------------------------------------------
+
+1190		2/24/17		M1-R, 500000 events			2/25/17
+
+---------------------------------------------------------------------------------
+
+1191-1193	2/27/17		      *Pulser tests			2/27/17
+
+---------------------------------------------------------------------------------
+
+1194		2/27/17		M1-R, 500000 events			2/28/17
+
+---------------------------------------------------------------------------------
+
+1195-1202	3/01/17		      *Pulser Tests			3/01/17
+				       NINOs 22,8,4,
+				       5,12,18,23,28		
+
+---------------------------------------------------------------------------------
+
+1203		3/01/17		M1-R, 500000 events			3/02/17
+
+1205		3/06/17		M1-R, 500000 events			3/07/17
+
+1210		3/08/17		M1-R, 500000 events			3/09/17
+
+1211		3/13/17		M1-R, 500000 events			3/14/17
+
+1212		3/15/17		M1-R, 500000 events			3/16/17
+
+1214		3/20/17		M1-R, 500000 events			3/21/17
+
+1217		3/22/17		M1-R, 500000 events			3/23/17
+
+1219		3/27/17		M1-R, 500000 events			3/28/17
+
+---------------------------------------------------------------------------------
+
+Swapped out NINO #12 with NINO #4, POS. #12 
+
+NINO #12 -> showing inconsistent tdc output pulse on scope from digital output on
+	    card
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---20		13--24
+2----3		6---19		10--11		14--21
+3----2		7---28		11---6
+4---17		8---26		12---4*
+
+---------------------------------------------------------------------------------
+
+1220		3/29/17		M1-R, 500000 events			3/30/17
+
+---------------------------------------------------------------------------------
+
+Swapped out sheilded ribbon cables for regular ribbon cables from adc gates to
+patch panel.
+
+---------------------------------------------------------------------------------
+
+1230		4/03/17		M1-R, 500000 events			4/04/17
+
+1233		4/05/17		M1-R, 500000 events			4/06/17
+
+1234		4/07/17		M1-R, 500000 events			4/08/17
+
+---------------------------------------------------------------------------------
+
+Swapped out NINO #4 with NINO #25, POS. #12 
+
+NINO #4  -> occupancy showing low values for every channel, may have just been a
+	    problem with setting voltages on the pmt to up the occupancy
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---20		13--24
+2----3		6---19		10--11		14--21
+3----2		7---28		11---6
+4---17		8---26		12--25*
+
+---------------------------------------------------------------------------------
+
+1240		4/10/17		M1-R, 500000 events			4/11/17
+
+1248		4/12/17		M1-R, 500000 events			4/13/17
+
+1251		4/14/17		M1-R, 500000 events			4/15/17
+
+1255		4/19/17		M1-R, 500000 events			4/20/17
+
+1256		4/21/17		M1-R, 500000 events			4/22/17
+
+1257		5/01/17		M1-R, 500000 events			5/02/17
+
+---------------------------------------------------------------------------------
+
+Swapped out NINO #25 with NINO #8, POS. #12
+
+NINO #25 -> occupancy showing low values for every channel again, determined
+     	    there is a problem with power supply connection, had Bill change
+	    connector to fix problem.  Voltage regulator determined to be 
+	    malfunctioning.
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---20		13--24
+2----3		6---19		10--11		14--21
+3----2		7---28		11---6
+4---17		8---26		12---8*
+
+---------------------------------------------------------------------------------
+
+1259		5/02/17		M1-R, 500000 events			5/03/17
+
+1260		5/03/17		M1-R, 500000 events			5/04/17
+
+1261		5/05/17		M1-R, 500000 events 			5/05/17
+
+---------------------------------------------------------------------------------
+Junk Runs:
+
+1268		5/08/17		M1-R, 500000 events			5/09/17
+
+1269		5/09/17		M1-R, 30000  events			5/09/17
+
+	Notes: Pixel 15 in POS#3 is continually missing.  To find the cause of
+the malfunction, the connectors of POS#2 and POS#3 were swapped.  Data showed 
+that POS#3 pixel 15 was still missing. The source of the problem is now reasoned 
+to be either the connection to the ADC or the ADC itself.  Also shown in these 
+runs was the low voltage supplied to card 14.
+
+---------------------------------------------------------------------------------
+
+1270		5/09/17		M1-R, 500000 events			5/10/17
+
+	Notes: Low voltage apparent in card 14.
+
+---------------------------------------------------------------------------------
+Junk Run:
+
+1271	       	5/10/17	   	M1-R, 50000  events			5/10/17
+
+	Notes: Junk run, Switched the ADC cards between cards 1 & 3 to detect 
+if problem with POS#3, pixel 15, is because of the ADC card, or the ADC itself. 
+Data showed that there were no missing pixels in either card. Cards will remain
+in new positions for the following runs.   
+
+---------------------------------------------------------------------------------
+
+1272		5/10/17		M1-R, 500000 events			5/11/17
+
+	Notes: High voltage power supply for card 14 was still very low.  No 
+pixels were missing in either card 1 or card 3.
+
+---------------------------------------------------------------------------------
+
+1273		5/18/17		M1-R, 500000 events			5/18/17
+
+	Notes: Junk run, forgot to turn on high voltage of the paddles.
+
+---------------------------------------------------------------------------------
+
+1274		5/18/17		M1-R, 500000 events			5/18/17
+
+	Notes:  High voltage supply switched from card 3 to card 2 to reslove
+NINO card 14's power supply issue  
+
+---------------------------------------------------------------------------------
+
+1275		5/19/17		M1-R, 500000 events			5/19/17
+	Notes: plot.C has a variable undefined syntax error. Likely from 
+emac crash yesterday (line 428)
+
+---------------------------------------------------------------------------------
+
+1276		5/22/17		M1-R, 500000 events			5/22/17
+
+	Notes: Run to collect data. plot.C fixed. 
+
+---------------------------------------------------------------------------------
+
+1277		5/23/17		M1-R, 500000 events			5/24/17
+
+---------------------------------------------------------------------------------
+
+1278		5/24/17		M1-R, 500000 events			5/25/17
+
+	Notes: swapped out connector boards for card 7 with VORG205 and
+VORG 206 which have resistors on them.
+
+---------------------------------------------------------------------------------
+
+1279		5/25/17		M1-R, 5000 events			5/25/17
+
+	Notes: Junk run, resistances are on the connector boards of card 7.
+
+---------------------------------------------------------------------------------
+
+1280		5/25/17		M1-R, 7000 events			5/25/17
+
+	Started: 12:29:30
+
+	Notes: Junk run, unplugged pixels 9-16 from the NINO card of card 7 to 
+look at the effect on adc plots. Resistances are on the connector boards of 
+card 7.
+
+---------------------------------------------------------------------------------
+
+1281		5/25/17		M1-R, 1000 events			5/25/17
+
+	Notes: Junk run, looked at the cosmic rays from card 7, pixel 8 on the 
+oscilloscope. Resistances are on the connector boards of card 7.
+
+--------------------------------------------------------------------------------
+
+1282		5/25/17		M1-R, 500000 events			5/26/17
+
+	Started - 16:53:48	      Ended - 02:30:08
+
+	Notes: Looking to see if malfunction with card 7, pixel 8 is consistent 
+through multiple runs.	Resistances are on the connector boards of card 7.	
+
+--------------------------------------------------------------------------------
+
+1283		5/26/17		M1-R, 500000 events			5/26/17
+
+	Started - 10:29:13	      Ended - 
+
+	Notes: Run collecting data with the resistances put on the connector 
+boards of card 7.
+
+---------------------------------------------------------------------------------
+
+1284		5/30/17		M1-R, 4500 events			5/30/17
+
+	Started - 16:10:56	      Ended -17:04:28 
+
+	Notes: Run to see if Coda rebooted correctly 
+
+---------------------------------------------------------------------------------
+
+1285		5/30/17		M1-R, 500000 events			5/31/17
+
+	Started - 17:09:35	       Ended - 03:07:06
+	
+	Notes: Run to collect data
+
+---------------------------------------------------------------------------------
+
+1286		5/31/17		M1-R, 500000 events			5/31/17
+
+	Started - 08:22:02	      Ended - 18:14:07
+
+	Notes: Run to collect data
+
+---------------------------------------------------------------------------------
+
+1287		6/01/17		M1-R, 500000 events			6/01/17
+
+	Started - 08:01:39	      Ended - 14:33:17 
+
+	Notes: Junk run.  Initially ment to be a run to collect data, but disk 
+space was full and could not record data. 
+
+---------------------------------------------------------------------------------
+
+1288		6/02/17		M1-R, 160000 events			6/01/17
+
+	Started - 08:46:46	      Ended - 11:54:55
+
+	Notes: Looking again at card 14. During run 1286, card 14 seemed to have
+a low number of events.  The High voltage seems to be working.
+
+---------------------------------------------------------------------------------
+
+1289		6/06/17		M1-R, 500k events				6/06/17
+
+	Started - 10:57:03	      Ended - 20:35:22
+
+	Notes: shifted the bars to make sure card 14 has events during the run.  
+
+---------------------------------------------------------------------------------
+
+1290		6/07/17		M1-R, 525 events			6/07/17
+
+	Started - 08:06:10	      Ended - 08:06:53
+
+	Notes: Junk run, forgot to turn on NINO card power supply
+
+---------------------------------------------------------------------------------
+
+1291		6/07/17		M1-R, 500000 events			6/07/17
+
+	Started - 08:09:44	      Ended -
+
+	Notes: Shifted the bars so that card 1 experiences a lot of events.
+
+---------------------------------------------------------------------------------
+
+1292		6/08/17		M1-R, 500000 events			6/08/17	
+
+	Started - 10:33:57	      Ended - 20:19:10
+
+	Notes: PMT 9 run through NINO card in position 8 to see if the problem 
+with position 9 is the PMT or the cables.
+
+---------------------------------------------------------------------------------
+
+1293		6/09/17		M1-R, 16000 events			6/09/17
+
+	Started - 14:28:36	      Ended - 14:48:01
+
+	Notes: Junk run.  Replaced the PMT in POS 9, 104, with 063 to see if 
+problem with card 9 is resolved.  Initial check of the data showed that card 8
+and card 10 were missing, so run was ended and the cards were checked.
+
+---------------------------------------------------------------------------------
+
+1294		6/09/17		M1-R, 500000 events			6/10/17
+
+	Started - 15:37:10	      Ended -01:26:57
+
+	Notes: Replaced the PMT in POS 9, 104, with 063 to see if problem with 
+card 9 is resolved.
+
+---------------------------------------------------------------------------------
+
+1295		6/12/17		M1-R, 60000 events			6/12/17
+
+	Started - 11:35:19	      Ended - 
+
+	Notes: Replaced the cables boards in POS 9 to check for origin of signal 
+problem. During run, crate power was shut off causing run to end unexpectedly.
+
+---------------------------------------------------------------------------------
+
+1296 -1298		6/12/17
+
+     Notes: Junk runs, conducted while trying to reboot coda.
+
+---------------------------------------------------------------------------------
+
+1299		6/13/17		M1-R, 200000 events			6/13/17
+		
+	Started - 08:54:50		Ended -
+
+	Notes: New run to view the replaced cables boards in POS 9 to check for
+source of signal problem. 
+
+---------------------------------------------------------------------------------
+
+1300		6/13/17		M1-R, 50000 events			6/13/17	
+
+	Notes: Switching cable boards did not solve POS 9 problem, during this
+run the ADC connector card for 9 and 10 were switched with the connector card for
+5.  
+
+---------------------------------------------------------------------------------
+
+1301		6/13/17		M1-R, 23000 events			6/13/17
+
+	Started - 15:45:14	      Ended - 16:12:38 
+
+	Notes: Changed out the cable that connected the NINO card and patch board
+for POS 9.
+
+---------------------------------------------------------------------------------
+
+1302		6/13/17		M1-R, 6000 events			6/13/17
+
+	Started - 16:13:54	      Ended - 
+
+	Notes: Changed the ribbon cables from the ADC to the patch panel. Forgot 
+to plug in a connector board on 8, redoing run in 1303.
+
+---------------------------------------------------------------------------------
+
+1303		6/13/17		M1-R, 500000 events			6/14/17
+
+	Started - 16:26:00	      Ended - 
+
+	Notes:Changed the ribbon cables from the ADC to the patch panel.
+
+---------------------------------------------------------------------------------
+
+1304		6/14/17		M1-R, 60000 events			6/14/17
+
+	Started - 10:01:01	      Ended - 
+
+	Notes: Put ADC ribbon cable for card 9 into the ADC slot for card 1.
+
+---------------------------------------------------------------------------------
+
+1305		6/14/17		M1-R, 60000 events			6/14/17
+
+	Started - 11:58:25	      Ended -
+
+	Notes: Changed out NINO card 20 in POS 9 with NINO card 43.
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---43*		13--24
+2----3		6---19		10--11		14--21
+3----2		7---28		11---6
+4---17		8---26		12---8
+
+---------------------------------------------------------------------------------
+
+1306		6/14/17		M1-R, events			6/14/17
+
+	Started - 13:23:17	      Ended - 
+
+	Notes: Adjusted High voltage for PMT 9 from 775 to 800.  No space on disk
+for data.  Ended this run, deleted junk runs and began the run again in 1307
+
+---------------------------------------------------------------------------------
+
+1307		6/14/17		M1-R, 26000 events			6/14/17
+
+	Started - 13:49:41	      Ended - 14:20:56
+
+	Notes: Adjusted High voltage for PMT 9 from 775 to 800.
+
+---------------------------------------------------------------------------------
+
+1308		6/14/17		M1-R, 7740 events			6/14/17
+
+	Notes: Adjusted high voltage of pmt 9 to 730 from 800. Counterintuitive 
+but too many correlated channels in adc signals. Potentailly a leak in the end of
+the fibre bundles (or mirrors at the other end?)
+
+---------------------------------------------------------------------------------
+
+1309		6/14/17		M1-R, 13000 events			6/14/17	
+
+	Notes: HV adjusted to 760 from 730 on card 9, 730 appeared insufficient 
+to trigger pmt signals. After the run, HV returned to 775 from 760 on card 9.
+
+---------------------------------------------------------------------------------
+1310		6/16/17		M1-R,110000 events			6/16/17
+        Junk Run - forgot NINO card power (oops)
+	Notes: NINO connector cables had some capacitor replacements before
+	run 1310 on card 7.
+	original measurements ~500pF, 
+	Pixel 1: No Capacitor 	~30pF (from the cable itself)
+	Pixel 6: Capacitor/2	~270pF
+	Pixel 7: Capacitor/2	~270pF	
+	Pixel 9: Capacitor/3	~120pF
+	Pixel 10: Capacitor/2   ~270pF
+--------------------------------------------------------------------------------
+1311		6/16/17		M1-R,30000 events			6/16/17
+
+-------------------------------------------------------------------------------
+1312		6/19/17		M1-R,300000 events			6/19/17
+-------------------------------------------------------------------------------
+1313		6/19/17		M1-R 500000 events			6/20/17
+		Notes: Removed capacitors from pixels 6,7,9,10 
+	
+6/20/17 NOTES: updated "plot.C" to write the mean and sigma of the fit
+	       to the ratio plots.
+	       updated the database file "db_C.cdetm1r.dat" with new 
+	       pedestal values for pmt 7 pixel 6 (632) and pixel 7 (601)
+	       
+	       new analysis of run 1313 to check the efficiency ratios and
+	       threshold determination
+	       -> channels with NO capacitor look great!!! 
+	       -> thresholds ~ 35 ADC channels
+
+	       Discussion with Bogdan - decide to remove all capacitors from
+	       the cables for PMT 7, but keeping the resistors in place.
+
+--------------------------------------------------------------------------------
+1314		6/20/17		M1-R	64 K events
+		NOTE: all capacitors removed from cables for PMT 7; resistors
+		left on board.
+
+		Removed several scint_XXXX.root files in order to free up some disk space; the original CODA data files are still present and can be analyzed as needed.
+
+		ended run early as pixel 12 of pmt 7 missing due to short to ground on the cable/board; need wire removed from previous capacitor location.
+
+------------------------------------------------------------------------------
+1315		6/20/17		M1-R	Start: 16:48	End: 02:44 500K events
+
+		cable for pmt 7 fixed (removed short where capacitor had been previously); installed 600 Ohm resistor in place of wire on pixel 12
+		also added a loop of wire to the delay lines of the two unconnected pixels for pmt 7 (pixel 4 and 16) to test the pedestals.
+
+-----------------------------------------------------------------------------
+1316		6/21/17		M1-R	Start: 16:08	End: 02:04 500K events
+		
+		replaced cable loops with a loop connecting signal to ground on the two unconnected pixels (4,16) in pmt 7; want to check the pedestals - expect correlation between the pedestals of the two unconnected pixels.
+
+-----------------------------------------------------------------------------
+
+1317		6/27/17	        M1-R 	Start: 11:35	End: 21:29 500k events
+
+		Notes: Run to check crosstalk between pixels in pmt 7 at 775V. No capacitors in installed for pmt 7.
+
+-------------------------------------------------------------------------------
+
+1318		6/28/17		M1-R	Start: 10:46	End: 13:19 500k events
+
+		Notes: run to check crosstalk between pixels at 750V compared to runs with 775V.	
+
+------------------------------------------------------------------------------
+
+1319		6/29/17		M1-R	Start: 13:22	End: 23:25 500k events
+
+		Notes: run to check crosstalk between pixels at 725V compared to runs with 775V and 750V.
+
+--------------------------------------------------------------------------------
+
+1320		6/30/17		M1-R	Start: 10:25	End: 20:24 500k events
+
+		Notes: run to check crosstalk between pixels at 700V compared to runs with 775V, 750V, and 725V.
+
+-------------------------------------------------------------------------------
+ 
+1321		7/3/17		M1-R	Start: Junk run/
+
+--------------------------------------------------------------------------------
+
+1322		7/3/17		M1-R	Start: 10:28	End: 20:25 500k events
+
+		Notes: run to check crosstalk between pixels at 800V compared to runs with 775V, 750V, 725V, and 700V. (PMT 7 only)
+
+-----------------------------------------------------------------------------
+
+1323 JUNK
+-----------------------------------------------------------------------------
+
+1324		7/17/17		M1-R	Start: 16:24	End: 2:25 500k events
+		
+		Checked the voltage connections for the NINO cards; some cards were only reading back 4.3V instead of >4.8 V; tightened wire connections at the distribution board which resulted in a higher reading of 4.9 V - pmts 1,2,3,12,14.
+------------------------------------------------------------------------------
+
+1327	7/18/17		M1-R	Start:16:55	End:02:59	500k events
+
+	Notes:  Adjusted power supply cable to NINO 2 because in run 1324, supply cable was not properly situated and the card was not receiving enough voltage.
+---------------------------------------------------------------------------------
+
+1328	7/21/17		M1-R	Start: 10:07	End:10:37	25k events
+
+	Notes: Junk run to make sure everything is set up properly after opening up the module.
+
+---------------------------------------------------------------------------------
+
+1329	7/21/17		M1-R	Start: 10:45	End:11:15	25k events
+
+	Notes: Junk run, 1328 showed missing pixels and a low number of events 
+from card 2.  Tried plugging cables back in to see if anything changes.
+
+---------------------------------------------------------------------------------
+
+1330	7/21/17		M1-R	Start: 11:24	End: 11:42	15k events
+
+	Notes: Junk run, still trying to fix missing pixels.
+
+---------------------------------------------------------------------------------
+
+1331	7/21/17		M1-R	Start:11:43	End: 21:26	500k events
+
+	Notes: Run to see if anything has changed after opening up the module.
+
+---------------------------------------------------------------------------------
+
+1332	7/25/17		M1-R	Start: 11:43	End: 13:39	97k  events
+
+	Notes: Junk run, Swapped out NINO card for PMT 9 with NINO card for PMT 4. 
+	       Checking to try and find problem with adc for PMT 9. Occupancy shows 
+	       missing channels for PMT 9 and PMT 5.
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---17*		13--24
+2----3		6---19		10--11		14--21
+3----2		7---28		11---6
+4---43*		8---26		12---8
+
+----------------------------------------------------------------------------------
+
+1333	7/25/17		M1-R	Start: 14:33	End: 
+
+	Notes: Junk run, Continuing to figure out problems with PMT 9 and 5.
+	       PMT 5 is good.
+
+----------------------------------------------------------------------------------
+
+1334	7/25/17		M1-R	Start: 16:30	End: 02:37	500k events
+
+	Notes: Run to check PMT 9 ADC spectrum. ADC in PMT 9 does exist!!!
+	       ADC signals in PMT 9 just very high which fit command did
+	       not account for.
+	       Look at PMT9_adcgood in rootfiles directory for results.
+	       PMT 9 was set for this run at 775V.
+	       Signals also show ver different widths in the signals across
+	       the different pixels. Bogdan suggests not using resistor to
+	       fix this, but just lower high voltage for now, get a new run,
+	       and analyze further results.
+
+----------------------------------------------------------------------------------
+
+1335	7/26/17		M1-R	Start: 11:45	End: 21:40	500k events
+
+	Notes: Run to check PMT 9 ADC spectrum  at 725V. Check to see where ADC 
+	       signals end up when running adc fit command.
+	       Compare with run 1334 to analyze changes in signal values and
+	       widths.
+
+-----------------------------------------------------------------------------------
+
+1336-1337	Notes: Junk runs, moved triggers for pmts 1 & 2
+	       
+	       
+-----------------------------------------------------------------------------------
+
+1338	7/27/17		M1-R	Start: 11:45	End: ROC 14	386k events
+				       		     & EB1
+						     disconnected
+	
+	Notes: Moved triggers for pmt 14, new problem apparent with ROC 14 and EB 1
+	       randomly disconecting.
+	       Same three channels in pmts 7, 10, & 12 still missing.
+	       Checking these channels with pulser leaving swapping NINOs as a last
+	       resort.
+
+	        7/28/17 - Pulser testing for POS 7,10 and 12.
+	       	POS 7: no ADC in channel 11 but cables are okay
+		POS 10: channel 7 was missing as a result of a loose cable
+		POS 12: no ADC or TDC in channel 10 but cables are okay
+		In POS 7 -> card 28 swapped with serial# 9-17/11/16
+		In POS 12 -> card 8 swapped with serial# 5-17/11/16
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---43		13--24
+2----3		6---19		10--11		14--21
+3----2		7---9-17/11/16*	11---6
+4---17		8---26		12---5-17/11/16*
+
+------------------------------------------------------------------------------------
+
+1339-40	7/28/17		M1-R	Start: 15:40	End: junk
+
+	Notes: Junk runs, to check missing channels after swapping out the nino cards 
+               using pulser.
+ 
+--------------------------------------------------------------------------------------
+
+1341 - junk run, forgot to turn on NINOs
+
+1342	7/28/17	 	M1-R	Start: 16:50	End: 2:22	500k events
+
+	Notes: Put resistors into pmt signal wires for PMT 5. Check with older
+	       runs to see any change.
+
+--------------------------------------------------------------------------------------
+
+1343 - junk run, forgot to plug in connector boards
+
+1344-1350   7/31/17	 	M1-R			
+
+       Notes: Junk run, checking to see if channel 15 in POS 5 reappeared.
+
+
+--------------------------------------------------------------------------------------
+
+1351	7/31/17		M1-R	Start: 16:29	End: 2:15	500k events
+
+	Notes: Put resistors into pmt signal wires for PMTs 6, 8, and 9. Make 
+ 	       comparison plots for mean adc, look at thresholds, and then analyze
+	       crosstalk. For PMTs 5,6,8,9. Created adc mean comparison plots
+	       for PMTs 5,6,8,9. 
+
+	       PMT 5 = 775V, PMT 6 = 775V, PMT 8 = 750V, PMT 9 = 725V
+
+-------------------------------------------------------------------------------------
+
+1352	8/01/17		M1-R	Start: 16:48	End: 2:33	500k events
+
+	Notes: Put resistors into pmt signal wires for PMTs 1 & 2. Make comparison
+	       plots for mean adc, look at thresholds, and then analyze crosstalk.
+	       for pmts 1,2,5,6,8,9. 
+
+	       PMT 1 = 750V, PMT 2 = 750V, PMTs 5...9 = 700V.
+
+-------------------------------------------------------------------------------------
+
+1354	8/02/17		M1-R	Start: 16:26	End: 2:14	500k events
+
+	Notes: Put resistors into pmt signal wires for PMTs 3 & 14. Shifted triggers
+	       over for pmts 1 & 2.	       
+	       Make comparison plots for mean adc, look at thresholds, and then 
+	       analyze crosstalk for pmts 1,2,5,6,8,9. 
+
+	       PMT 1,2,14 = 750V, PMTs 3,5...8 = 725V, PMT 9 = 750V.
+
+-------------------------------------------------------------------------------------
+
+1355	8/03/17		M1-R	Start: 15:57	End: 1:47	500k events
+
+	Notes: No data from 14, since paddles were shifted.  Paddles kept in same
+	       place.
+
+	       PMTs 1-3 = 700V, PMTs 5,6 = 750V, PMTs 8,9 = 775V.
+
+-------------------------------------------------------------------------------------
+
+1356	8/04/17		M1-R	Start: 16:28	End: 2:09	500k events
+
+	Notes: Put resistors into pmt signal wires for PMTs 10 & 12.
+	       Make comparison plots for mean adc, look at thresholds, and then 
+	       analyze crosstalk for pmts 1,2,3,5,6,8,9,10,12.
+
+	       PMTs 1-3,5-6,8-10,12 = 800V.
+
+------------------------------------------------------------------------------------
+
+1357	8/07/17		M1-R	Start: 16:19	End: 1:58	500k events
+
+	Notes: Make comparison plots for mean adc, look at thresholds, and then
+	       analyze crosstalk for pmts 1-3,5-10,12,14.
+
+	       PMTs 5-9, crosstalk analysis complete. PMTs 5-9 = 725V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMTs 1-4,10-12 = 775V. PMT 13,14 = 750V.
+
+	       Run 1358 -> junk run, coda crashed, restarted and looks fine.
+
+----------------------------------------------------------------------------------
+
+1359	8/08/17		M1-R	Start: 17:10  	End: 2:53    	500k events
+
+	Notes: Put resistors into pmt signal wires for PMTs 4,11,13.
+	       Make comparison plots for mean adc, look at thresholds, and then
+	       analyze crosstalk for pmts 1-4,10-14.
+
+	       PMTs 5-9, crosstalk analysis complete. PMTs 5-9 = 725V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMTs 1,2 = 725V, PMT 3 = 750V, PMT 4, 11 = 775V, PMT 10 = 750V
+
+---------------------------------------------------------------------------------
+
+1360	8/09/17		M1-R	Start: 15:43 	End: 1:30   	500k events
+
+	Notes: Make comparison plots for mean adc, look at thresholds, and then
+	       analyze crosstalk for pmts 4,10-14.
+
+	       Moved trigger paddles over for PMTs 12,13,14.
+
+	       ADC mean comparison textfiles and plots complete for pmts 1-11.
+	       Saved as PMT##_adcmean_comparison.txt and
+	       PMT##_adccomparison_plot.pdf in rootfiles directory.
+
+	       PMTs 1-3,5-9, crosstalk analysis complete. 
+	       PMTs 1-3,5-9 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 4,11,13,14 = 750V, PMT 10 = 725V, PMT 12 = 775V
+
+	       No data showing in occupancy for PMT 14.
+
+----------------------------------------------------------------------------------
+
+1361/2 -> Junk run, checking pmt 14.
+
+1363	8/10/17		M1-R	Start: 13:10  	End: 22:56    	500k events
+
+	Notes: Make comparison plots for mean adc, look at thresholds, and then
+	       analyze crosstalk for pmts 4,10-14.
+
+	       ADC mean comparison textfiles and plots complete for pmts 1-12.
+	       Saved as PMT##_adcmean_comparison.txt and
+	       PMT##_adccomparison_plot.pdf in rootfiles directory.
+
+	       PMTs 1-3,5-9, crosstalk analysis complete. 
+	       PMTs 1-3,5-9 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 4,11 = 725V, PMT 10 = 700V, PMT 12,13,14 = 750V
+
+----------------------------------------------------------------------------------
+
+1364	8/11/17		M1-R	Start: 14:08  	End: 23:48   	500k events
+
+	Notes: Make comparison plots for mean adc, look at thresholds, and then
+	       analyze crosstalk for pmts 4,10-14.
+
+	       ADC mean comparison textfiles and plots complete for pmts 1-14.
+	       Saved as PMT##_adcmean_comparison.txt and
+	       PMT##_adccomparison_plot.pdf in rootfiles directory.
+
+	       PMTs 1-3,5-9,10 crosstalk analysis complete. 
+	       PMTs 1-3,5-9,10 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 4,11 = 700V, PMT 12 = 725V, PMT 13,14 = 775V
+
+----------------------------------------------------------------------------------
+
+1365	8/14/17		M1-R	Start: 15:56   	End: 1:37   	500k events
+
+	Notes: Comparison plots for 1-12,14 complete. Found resistors were wrong
+	       for PMT 13 and got them fixed. Need to make comparison plot
+	       for PMT 13.
+
+	       ADC mean comparison textfiles and plots complete for pmts 1-14.
+	       Saved as PMT##_adcmean_comparison.txt and
+	       PMT##_adccomparison_plot.pdf in rootfiles directory.
+
+	       PMTs 1-3,5-9,10 crosstalk analysis complete. 
+	       PMTs 1-3,5-9,10 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 4,11 = 800V, PMT 12 = 700V, PMT 13 = 750V, PMT 14 = 725V
+
+	       Problem with two pixels missing for PMT 13, shut off NINOs.
+
+-----------------------------------------------------------------------------------
+
+1366 -> junk run, trying to fix pmt 13 missing pixels, restarting NINOs did not
+     	work
+
+1367	8/15/17		M1-R	Start: 15:22   	End: 1:02   	500k events
+
+	Notes: Comparison plots for 1-12,14 complete.
+
+	       PMTs 1-11 crosstalk analysis complete. 
+	       PMTs 1-11 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 12 = 800V, PMT 13 = 750V, PMT 14 = 700V
+
+	       Need to check occupancy for PMT 13 to see if pixels have returned
+	       after shutting off NINOs. PMT 13 plugged in wrong, and is now
+	       fixed.
+
+------------------------------------------------------------------------------------
+
+1368	8/16/17		M1-R	Start: 9:23   	End: 16:22   	357k events
+
+	Notes: Comparison plots for 1-14 complete.
+
+	       PMTs 1-12 crosstalk analysis complete. 
+	       PMTs 1-12 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 13 = 775V, PMT 14 = 800V.
+
+-----------------------------------------------------------------------------------
+
+1369	8/16/17		M1-R	Start: 16:32   	End: 02:16   	500k events
+
+	Notes: Comparison plots for 1-14 complete.
+
+	       PMT 13 signal wires were the wrong way around and have been put
+	       right. This is the run that will mark the start of PMT 13's
+	       crosstalk analysis.
+
+	       PMTs 1-12,14 crosstalk analysis data complete. 
+	       PMTs 1-12,14 = 750V for now.
+	       Need to check adc before determining optimal HV setting.
+
+	       PMT 13 = 750V
+
+-------------------------------------------------------------------------------------
+
+1370	8/18/17		M1-R	Start: 15:04	End: 00:47	500K events
+	
+	Notes: set PMT 13 HV = 725V - second dataset for crosstalk analysis.
+	       NO change to any other HV settings
+
+	       Updated text file with correct mean ADC values for PMT13
+	       from run 1369. Made comparison plot of mean ADC values with
+	       and without the resistors - "PMT13_comparison.png" 
+	       -> much better; smoother and less scatter!
+
+-------------------------------------------------------------------------------------
+
+	8/24/17		HV needs rebooted to reconnect to GUI
+			Everything up and running now.
+
+1371			M1-R	Start: 10:15   End: 19:42	500K events
+
+	NOTES: set PMT 13 HV = 700 V - third dataset for crosstalk analysis.
+	       NO change to any other HV settings.
+
+-----------------------------------------------------------------------------------
+
+	8/28/17		HV needs rebooted to reconnect to GUI
+			Everything up and running now.
+
+1372			M1-R 	Start: 11:58 	  End:	  500K events
+
+	NOTES: set PMT 13 HV = 775 V - fourth dataset for crosstalk analysis.
+	       NO change to any other HV settings.
+	       Deleted some files to free up some disk space on the hard drive.
+	       Steadily running out of disk space; need plan to archive the raw CODA data files!!
+   P.M. ******* Accidentally deleted the DATA file for run 1351! Root file still exists! Do NOT delete run 1351 rootfile.
+
+-----------------------------------------------------------------------------------
+
+1373	8/29/17		M1-R	Start: 13:19	End:    	436K events
+	
+	Notes: set PMT 13 HV = 800V - last dataset for crosstalk analysis.
+	       NO change to any other HV settings.
+
+-----------------------------------------------------------------------------------
+
+1374	8/30/17		M1-R	Start: 14:10	End: 23:48	500K events
+
+	Notes: tried to cover the area around PMT 13 to prevent light leaks.  
+	       Changed HV for PMT 13 to be 725V.
+
+------------------------------------------------------------------------------------
+
+Individual Crosstalk Analysis-
+	
+	(9/6/2017)
+
+Looking at crosstalk among troublesome pixels (highlighted in yellow on the 
+crosstalk spreadsheet).  Similar to regular crosstalk analysis, except there is only
+one tdc cut which is changed while the rest of the cuts remain the same.  The tdc
+cut is cycled through all of the pixels in order to pin point which pixels are the 
+source of cross talk.  Today, PMT 4 and 7 were analyzed.  There was significant 
+crosstalk between pixel 107 and 111 (PMT 7) where pixel 111 is a missing pixel.  
+A diagram of the crosstalk between pixels was drawn in lab book for visual aid and 
+future reference.
+
+       (9/7/2017)
+
+At this point individual pixel crosstalk analysis has been completed for problem
+pixels from PMT1-7. Possible that high amounts of crosstalk are coming from rejected
+fibre pixels. PMT 3 was used to investigate this and further analysis needs to be
+done on other PMTs. Red highlight in crosstalk spreadsheets represents largest
+crosstalk bleeding in the set from that highlighted pixel to the test pixel.
+
+	  (9/14/17)
+
+Made TDC plots of problem pixels. Used TDC with good ADC cuts for test pixel in
+black. Then plotted on same graph the TDC w/ good ADC of test pixel and TDC cut
+on pixel that is bleeding into test pixel which is in red.
+
+Saved these plots as TDCPMT#Px#_crosstalkfromPx#.pdf where # are numbers being
+used in analysis. Completed for PMTs 1-3, continue on with rest of PMTs next time.
+
+     	(9/21/17)
+
+Assembled a mode for checking crosstalk between pixels using 4-channel oscilloscope
+which is located on top of module one. Channels one and two currently showing
+analogue and logical pulses for pixel 3 of PMT3 and channels three and four
+currently showing logical and analogue pulese for pixel 4 of PMT3.
+
+Using the "Single" event button in the top right corner of oscilloscope, keep
+clicking it for each new event and count number of crosstalk events between
+both pixels. A crosstalk event can be seen visually as described on page 153 of
+log book.
+
+The analogue signals in channels 1 and 4 are coming straight out of the nino cards.
+The logical signals are coming from the NIM logical translator in the crates,
+which are coming through wire 17 (ch 2) and wire 18 (ch 3).  These two wires
+are strapped together with the wire 19 that we've used in the past for the 
+attenuator.
+
+Now we have setup a system for the 4 channel oscilloscope where we are triggering
+on the Aux channel from a random pixel in the PMT and then seeing the effects
+from that channel on both of the other two channels in Channels 1-4 on the scope.
+
+Reference pg. 153 in logbook for useful tips on identifying crosstalk.
+
+	  (9/22/17)
+
+Looking at the crosstalk of pixels 3 and 4 in PMT 3. Trigger supplied by pixel 9 
+which showed a lot of crosstalk.  In the data anaylsis done on the computer, pixel 9
+did not appear to be a source of crosstalk.  NINO card in POS 3, card 2,  was 
+replaced with NINO card 46.
+
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---20		13--24
+2----3		6---19		10--11		14--21
+3----46*	7---28		11---6
+4---17		8---26		12--25
+
+	(9/26/17)
+
+Looked at new NINO card to see if any change in crosstalk, but when crosstalk
+was analyzed looking at effect of PMT3 Pix 4 on PMT3 Pix 3, similar results
+were found to analysis from crosstalk spreadsheet.  Analysis showed about 22 percent
+crosstalk between these two pixels and today oscilloscope showed 18 percent
+crosstalk between them which is out of 100 events measured, not so different from
+previous NINO card which showed 20 percent crosstalk on oscilloscope out of 100
+events.
+
+Checked other channels which which are also providing similar results to analysis.
+
+PMT 3 Pix 9 is having a crosstalk effect on PMT3 Pix 3. Crosstalk from scope
+is consistant with values in spreadsheet for PMT3 for channels that have
+highest amounts of crosstalk.
+
+When PMT3 Pix 7 observed on scope no events in Pix 11 were resulting in
+crosstalk events in Pix 7 even though analysis showed large crosstalk in 
+spreadsheet values.
+
+	(9/28/17)
+
+Looked at scope results for swapping out ADC white wignal wires between PMT 3 and
+PMT 2 to see if signal wires have any affect on crosstalk results and how this
+compares with crosstalk analysis.
+
+Results show that ADC signal wires coming out of PMt do not have any effect
+on crosstalk results as results on the scope were found to be similar to previous
+scope results and analysis.
+
+      (10/5/17)
+
+Swapped out NINOs between PMT 3 and 2 to check if crosstalk is consistent between
+"good" NINO and "bad" NINO. Found that most crosstalk percentages on the scope
+were not necessarily equal to crosstalk percentages from before on scope or in
+analysis
+
+Also, noticed different patterns of crosstalk occuring since in many cases when
+looking at two channels who were suppose to crosstalk with each other were instead
+getting crosstalk from some other source.
+
+This means that NINOs might play some factor in crosstalk. When finished the NINOs
+were put back in there original positions.
+
+     (11/14/17)
+
+New form of crosstalk analysis has been completely implemented for PMT1. This
+new analysis involves using the number of TDC events with small ADC amplitudes 
+compared with the overall number of TDC events to calculate the percent crosstalk 
+occuring in a specific pixel/channel. Complimentary to this new analysis, TDC width
+cuts are now also being implemented to remove large portions of crosstalk events 
+from an analysis perspective. In all cases this reduces crosstalk events 
+analytically by factors of 3, 4, or 2. This however does not provide a physical 
+solution to the crosstalk or give any indication of its source whether it be 
+coupling in the PMTs or alignment issues with the PMT and fibre collar.
+
+In order to properly determine the TDC width cut, one must run the
+plot_tdc_diff(#) command and eyeball the best place to cut on the "bad" data 
+represented in the plot by the blue spectrum without removing to much "good" data 
+represented in the plot by the red spectrum.
+
+I have yet to analyze how this TDC width cutting is affecting the "good" data 
+spectrum and by that I mean analyzing what percent is cut out after placing the 
+TDC width cut.
+
+The next steps will be to look at effects the "good" data and also implementing
+this TDC based crosstalk analysis approach to all the other PMTs.
+
+Syntax for TDC w/ low ADC approach: first run plot.C for desired run number then
+create new canvas
+
+T->Draw("C.cdetm1r.tdcl[##]","C.cdetm1r.tdcl[##]>500")
+
+T->Draw("C.cdetm1r.tdcl[##]","C.cdetm1r.tdcl[##]>500 && C.cdetm1r.adc_c[##]<(cut)")
+
+Use these two values to get ratio of crosstalk, must choose your own best cut.
+
+Syntax for TDC w/ low ADC and but still okay TDC width
+
+T->Draw("C.cdetm1r.tdcl[##]","C.cdetm1r.tdcl[##]>500 && C.cdetm1r.adc_c[##]<(cut) 
+&& (C.cdetm1r.tdcl[##]-C.cdetm1r.tdct[##])>(cut)")
+
+Again use this number over total TDC to get ratio of crosstalk with TDC width cut
+and you must choose your own cut based on plots from plot_tdc_diff(#).
+
+    (1/12/18)
+
+Problem with PMT 4. In notes it says that pixel 1 is rejected and pixel two is
+connected, but data shows no TDC for pixel 2 and it does show data for pixel 1.
+
+Comparatively to the other PMT TDC data, PMT 4 TDC data is somewhat disturbingly
+low, but only in channels 1,3-8, & 12-15. This only occurs at 700 V and less
+at 725 V. So would recommend not setting PMt tp 700 V and possibly higher than
+725 V.
+
+    (1/29/18)
+
+Finished crosstalk analysis up through PMT 11. Still need to take a look at PMT 2 & 4.
+HV System Control is not recognizing the crates as being turned on. Will need to fix
+this. Run 1351 is now completed deleted and so we need a new run with the same PMT HV
+settings in order to complete analysis for PMTs. Everything else in DAQ is working fine.
+
+
+----------------------------------------------------------------------------
+
+2/5/18
+
+Finally reestablished the HV gui controls with the HV crates; had to manually power cycle the two crates - switch off and then on. This seems to have cleared something and now we can control the crates again with the gui. However, all the saved settings were lost. For now, set only the external triggers and set all the PMT HVs to 750 V for a test. Successfully restarted CODA and now taking test data.
+
+Run 1376 - test with all PMTs set to 750 V. 500000 events, problem with ROC crashing
+    	   and pmts missing in occupancy, going to troubleshoot. Rebooted ROC seems
+	   to be fine.
+
+---------------------------------------------------------------------------------------
+
+1377		2/07/18		Junk Run				2/07/18
+
+		Notes: Junk run to check card 3 and 12. PMTs set to 750V.
+
+1378	     	2/07/18	       Junk Run					2/07/18
+ 	
+		Notes: run to check if PMT 3 is back and good. PMTs set to 750V. PMT 3
+		       is back, but low only due to placement of triggers. PMTs 7,12,14
+		       are now missing from occupancy. will need to keep
+		       troubleshooting. Checked trigger pulses and the all have 
+		       equal amplitudes on scope so no problem there.
+				       
+----------------------------------------------------------------------------------------
+
+1379		2/09/18		Junk Run				2/09/18
+
+		Notes:  Still working on checking if PMTs 7, 12 and 14 are back.
+
+			Calculated efficiency analysis data for PMT 1. File located on
+			Desktop.
+
+----------------------------------------------------------------------------------------
+
+1380		2/12/18		Junk Run				2/12/18
+
+		Notes:  Looked at signals from NINO cards 3 and 12.  Found source
+			of problem with ADC signal not passing through the card.  
+			Replaced the cards and running a junk run to see if change of
+			card worked.
+
+PMT NINO CARD	PMT NINO CARD	PMT NINO CARD	PMT NINO CARD
+
+1---15		5---16		9---20		13--24
+2----30*	6---19		10--11		14--21
+3----46		7---28		11---6
+4---17		8---26		12--29*
+
+		Run 1380 ended successfully with 500K events.
+
+--------------------------------------------------------------------------------------
+
+Discovered a problem with the power wires to the NINO cards; several of the connectors appeared to have overheated and deformed. Working with Bill Gunning to replace some connectors; Bill will replace all of them tomorrow.
+
+Replaced the connectors on PMTs 2 and 4 and taking data to test now.
+
+1381	 2/14/18	Junk Run to test power wires to NINOs on PMT 2 & 4
+	 		PMT 4 is back! Need to move the lower trigger scintillator bars to get signals in PMT 2.
+
+1382			Junk run to test PMT 2 and 4 again; moved the trigger scintillators to cover PMT 2. PMT 4 looks good; PMT 2 still missing!
+
+Turned off power supply to NINO cards.
+Bill Gunning will replace the connectors on all wires tomorrow.
+
+1383 	     2/16/18	  Junk Run
+
+	     Notes: Another run to see if replaced connectors for NINO power supply
+	     	    resolved issues with PMT data.
+	     
+---------------------------------------------------------------------------
+
+1384	2/28/18		Junk run
+
+	CODA back up and working again; HV gui working but not able to turn on
+	individual channels nor getting a readback voltage.
+
+	Unable to get the HV turned on for an individual channel but at least the GUI now works!
+
+---------------------------------------------------------------------------
+
+HV PROBLEMS - ongoing!
+
+We have encountered problems with the HV crate, where almost every day we seem to lose contact with the crate from the control gui. Usually, either killing and rebooting the gui, or sometimes resetting the control modules (either the single board computer "sbscdet" or the 932A controller) in the VME crate is enough to reestablish the connection. However, recently, this has not been working.
+
+Brad Sawatsky came out to the test lab to help troubleshoot the problems and found that something had caused the sbscdet computer to lose all of its saved parameters in its onboard RAM. These parameters are saved in the sbscdet_boot.txt file. Also found that sometimes the connection between sbscdet (single board computer in the VME crate) lost connection with the hvsrv3 computer - Brad believes this may be due to the nightly portscans that the computer center runs on the machines.
+
+Brad demonstrated how to telnet into the HV crate and the sbscdet computer to check things and to update the parameters for the boot sequence of the sbscdet computer. Finally, we were able to reestablish the connection between sbs2, hvsrv3, sbscdet and the VME controller and were able to successfully get the HV gui up and running. 
+
+However, the problems did not end there. Although the HV control gui now boots up and loads fine, we discovered that all of the previous HV settings had been deleted and only some nonsense characters remained in their place. Worse still was that up we tried to switch on any channels (even when ch. 24 was correctly enabled) the channel simply did not power up - the crate was not outputting any HV. This was verified with a junk data run (1384) which had no events in it. 
+
+Further analysis by Brad seemed to indicate that there may be an underlying problem with something on either the HV card or the HV crate itself, that was not allowing it to switch any channels on. Currently waiting on some information from Jack Segal about this as well. 
+
+3/5/18 	- rather miraculously, after restarting the HV control gui again, and setting the HV on all the channels in card 8 (external trigger scintillators) to something reasonable, I was able to turn on the HV! Verified that the crate was outputting HV to the four external trigger scintillators by checking signals on the oscilloscope - good signals present.
+
+ - reset all HV to 750 V on all PMTs
+ - take a data run to verify data being collected.
+
+****** This still does not explain why we have had these problems with the HV crate and setting the HV to the PMTs or the external triggers; this is still an issue!!!
+
+---------------------------------------------------------------------------
+
+1385	3/5/18		Junk run - testing if HV working! (all PMTs set to 750V)
+	11465 events	Analysed events; all PMTs present in the occupancy although some with reduced counts.
+	 - everything appears to be working; checked ADC/TDC cables at NINO cards and found some to be loose.
+
+----------------------------------------------------------------------------
+
+1386	3/5/18		Start run with same settings as 1351 - to replace the deleted file.
+		       PMT 5 = 775V, PMT 6 = 775V, PMT 8 = 750V, PMT 9 = 725V
+		       Run successfully ended at 00:50 3/6/18	
+		       *** Data looks good; possibly a missing channel in PMT 4
+
+----------------------------------------------------------------------------
+
+1387	3/6/18		Test run; added foil 'shielding' over some of the NINO cards around the center of the detector - cards for PMTs 6,7,8,9. No change to HV from run 1386.
+	112K events
+	- shielding made no change to the low ADC events which trigger the TDC
+
+----------------------------------------------------------------------------
+
+1388	3/6/18		Test: added some foil shielding around the PMT housing of the four external trigger scintillators.
+	- stopped after 42K events
+	- analysis showed that the shielding had little or no effect.
+
+** Shut down HV and NINO power for now.
+
+-----------------------------------------------------------------------------
+
+1389	3/14/18		Test: replaced cable from PMT 2 to NINO with one which does not have the resistors installed (this cable has only the capacitors). Going to check the signal amplitudes and check the resistor calculations.
+	JUNK - did not have trigger scintillators connected.
+
+-----------------------------------------------------------------------------
+
+1390	3/14/18		TEST: replaced all cabling correctly for the trigger scintillators and the NINO outputs and ADC/TDC inputs. Again testing PMT 2 with original cables from NINO to PMT to check signal amplitudes and required resistances.
+
+PMT 2 ADC mean results from run 1390. Use these to get resistor values in spreadsheet.
+Also, ajusted 14 plot histo of plot_adc_fit(2) for run 1390 has been save to 
+rootfiles directory as PLOTADCFIT_PMT2_run1390.pdf
+
+Pixel number: 1   	 mean = 169.784    	 sigma = 33.6955
+Pixel number: 2   	 mean = 159.104    	 sigma = 38.1391
+Pixel number: 3   	 mean = 180.332    	 sigma = 41.5254
+Pixel number: 4   	 mean = 0    	 sigma = 0
+Pixel number: 5   	 mean = 310.308    	 sigma = 92.0507
+Pixel number: 6   	 mean = 211.982    	 sigma = 47.4355
+Pixel number: 7   	 mean = 183.755    	 sigma = 47.8944
+Pixel number: 8   	 mean = 0    	 sigma = 0
+Pixel number: 9   	 mean = 206.263    	 sigma = 48.4862
+Pixel number: 10   	 mean = 207.580    	 sigma = 44.1747
+Pixel number: 11   	 mean = 224.971    	 sigma = 52.9396
+Pixel number: 12   	 mean = 183.844    	 sigma = 54.6559
+Pixel number: 13   	 mean = 176.523    	 sigma = 52.1306
+Pixel number: 14   	 mean = 163.962    	 sigma = 52.4588
+Pixel number: 15   	 mean = 146.063    	 sigma = 42.2797
+Pixel number: 16   	 mean = 144.236    	 sigma = 39.5349
+
+Completed resistor calculations in spreadsheet on google group folder. Have Katie
+check that this was done correctly.
+
+----------------------------------------------------------------------------------
+
+1391	3/16/18		M1-R	Start: 15:04	End: 00:47	500K events
+
+	Notes: Run for PMT4, with no resistors to get new ADC mean values and
+	       resistor values. Do these calculations on Monday. Put old PMT2
+	       with cables with resistors back in for PMT2 just for this run.
+	       The cables with resistors for PMT4 are sitting on the table.
+
+PMT4 mean ADC results, use these to get resistor values for connecting wire boards
+between PMT and NINO. Adjusted 14 histo plot canvas for PMT4 run 1391 saved in
+rootfiles directory as PLOTADCFIT_PMT4_run1391.pdf.
+
+Pixel number: 1   	 mean = 0    	 sigma = 0
+Pixel number: 2   	 mean = 750.503    	 sigma = 185.602
+Pixel number: 3   	 mean = 382.307    	 sigma = 108.789
+Pixel number: 4   	 mean = 296.801    	 sigma = 54.7761
+Pixel number: 5   	 mean = 409.700    	 sigma = 76.6763
+Pixel number: 6   	 mean = 510.228    	 sigma = 126.219
+Pixel number: 7   	 mean = 463.026    	 sigma = 116.515
+Pixel number: 8   	 mean = 370.556    	 sigma = 69.4108
+Pixel number: 9   	 mean = 254.859    	 sigma = 56.0190
+Pixel number: 10   	 mean = 258.629    	 sigma = 58.2992
+Pixel number: 11   	 mean = 275.880    	 sigma = 58.5719
+Pixel number: 12   	 mean = 414.898    	 sigma = 107.085
+Pixel number: 13   	 mean = 0    	 sigma = 0
+Pixel number: 14   	 mean = 427.49    	 sigma = 93.3866
+Pixel number: 15   	 mean = 309.208    	 sigma = 68.8058
+Pixel number: 16   	 mean = 244.836    	 sigma = 61.7849
+
+------------------------------------------------------------------------------------
+
+1392	3/19/18		M1-R	Start: 15:18	End: 11:03	500K events
+
+	Notes: Run for PMT 2 and 4 with replaced resistances.  The resistor of PMT 2 
+	pixel 5 (R9) was replaced with 2.94K ohms and the resistor of PMT 4 pixel
+	2 (R3) was replaced with 1.96K ohms.  The R even value, which is connected
+	to ground, is 3000 and 2000 respectively.  The R odd resistors  which were 
+	replaced had values larger than their respective R even resistors.  R even
+	needs to be larger than R odd since R even is connected to ground.  We
+	think that the over resistance affected the data for those pixels.  This run
+	should confirm if the problem is fixed. 
+	
+	HV: PMT 2, 4 - 750V
+
+-------------------------------------------------------------------------------------
+
+	Results from run 1392: for PMT 2
+
+Pixel number: 1   	 mean = 149.128    	 sigma = 32.3553
+Pixel number: 2   	 mean = 153.590    	 sigma = 39.4805
+Pixel number: 3   	 mean = 150.983    	 sigma = 44.2415
+Pixel number: 4   	 mean = 0    	 sigma = 0
+Pixel number: 5   	 mean = 127.382    	 sigma = 43.4114
+Pixel number: 6   	 mean = 120.923    	 sigma = 39.8577
+Pixel number: 7   	 mean = 133.002    	 sigma = 46.7667
+Pixel number: 8   	 mean = 0    	 sigma = 0
+Pixel number: 9   	 mean = 150.800    	 sigma = 39.5641
+Pixel number: 10   	 mean = 138.709    	 sigma = 36.5980
+Pixel number: 11   	 mean = 131.729    	 sigma = 38.4502
+Pixel number: 12   	 mean = 148.883    	 sigma = 41.4409
+Pixel number: 13   	 mean = 148.575    	 sigma = 34.4628
+Pixel number: 14   	 mean = 153.610    	 sigma = 40.6254
+Pixel number: 15   	 mean = 150.559    	 sigma = 37.4990
+Pixel number: 16   	 mean = 137.965    	 sigma = 43.1804
+
+      	 Results from run 1392: for PMT 4
+
+Pixel number: 1   	 mean = 0    	 sigma = 0
+Pixel number: 2   	 mean = 334.487    	 sigma = 114.171
+Pixel number: 3   	 mean = 260.571    	 sigma = 63.7995
+Pixel number: 4   	 mean = 245.373    	 sigma = 53.7355
+Pixel number: 5   	 mean = 245.269    	 sigma = 66.3754
+Pixel number: 6   	 mean = 237.359    	 sigma = 63.4420
+Pixel number: 7   	 mean = 224.828    	 sigma = 61.0220
+Pixel number: 8   	 mean = 237.380    	 sigma = 56.8166
+Pixel number: 9   	 mean = 151.924    	 sigma = 38.4455
+Pixel number: 10   	 mean = 227.742    	 sigma = 51.8936
+Pixel number: 11   	 mean = 241.684    	 sigma = 52.3145
+Pixel number: 12   	 mean = 233.235    	 sigma = 56.3496
+Pixel number: 13   	 mean = 0    	 sigma = 0
+Pixel number: 14   	 mean = 225.275    	 sigma = 60.4008
+Pixel number: 15   	 mean = 245.189    	 sigma = 61.9591
+Pixel number: 16   	 mean = 221.702    	 sigma = 53.3812
+
+------------------------------------------------------------------------------------
+
+1393	3/23/18		M1-R	Start:15:14	End:11:05pm		500K events
+
+	Notes: High voltage problems. HV GUI was unable to talk to crates.  When 
+	restarting CODA and then ROC, I was unable to connect to cdetts2 2006. 
+	Brad came by and tried connecting directly to cdetts2 and recieved no signal
+	indicating problem with connection and not the GUI. Regained connection by
+	rebooting board in crate below high voltage.
+
+	HV: PMT 2, 4 - 775V
+
+-------------------------------------------------------------------------------------
+	
+1394	3/26/18		M1-R	Start:12:30pm	End: 8:28 pm	500 K events	
+	
+	HV: PMT 2, 4 - 800 V 
+	NOTE: pmt 2 = channel 5; pmt 4 = channel 3 on HV gui
+
+---------------------------------------------------------------------------------
+
+1395	3/27/18		M1-R	Start: 10:00am	End: 6:13pm	500 K events
+	
+	HV: set both PMT 2 and 4 to 725 V
+
+---------------------------------------------------------------------------------
+
+1396	3/28/18		M1-R	Start: 10:40am	End: 6:50 am	500 K events
+
+	HV: set both PMT 2 and 4 to 700 V
+
+-----------------------------------------------------------------------------
+
+
+
+-----------------------------------------------------------------------------
+
+	4/16/18	
+	
+	Power off all PMTs, NINOs and shut down the HV crates. Decable everything from the module in preparation for turning it around to test the LEFT hand side.
+

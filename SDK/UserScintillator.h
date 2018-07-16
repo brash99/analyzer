@@ -1,5 +1,5 @@
-#ifndef Podd_UserScintillator_h_
-#define Podd_UserScintillator_h_
+#ifndef ROOT_UserScintillator
+#define ROOT_UserScintillator
 
 ///////////////////////////////////////////////////////////////////////////////
 //                                                                           //

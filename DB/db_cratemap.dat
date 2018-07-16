@@ -1,0 +1,10 @@
+# Date/Time = Wed Feb 1 10:00 2017
+==== Crate 14 type fastbus
+# slot  model   clear   header  mask    nchan   ndata
+  14    1877    1       0x0     0x0     96      768
+  15    1877    1       0x0     0x0     96      768
+  16    1877    1       0x0     0x0     96      768
+  20    1881    1       0x0     0x0     64      64
+  21    1881    1       0x0     0x0     64      64
+  22    1881    1       0x0     0x0     64      64
+  23    1881    1       0x0     0x0     64      64

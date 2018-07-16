@@ -1,0 +1,50 @@
+#
+# Cut definitions 
+#
+
+Block: RawDecode
+
+evtyp1            g.evtyp==1        # Event type 1 (=HRSR main trigger)
+evtyp3            g.evtyp==3
+# (NO cut)RawDecode_master  evtyp1||evtyp3    
+
+
+Block: Reconstruct
+
+#NoTrackR          R.tr.n==0
+#JustOneTrackR     R.tr.n==1
+#CleanU1R          R.vdc.u1.nclust==1
+#CleanV1R          R.vdc.v1.nclust==1
+#CleanU2R          R.vdc.u2.nclust==1
+#CleanV2R          R.vdc.v2.nclust==1
+#CleanClustR       CleanU1R&&CleanV1R&&CleanU2R&&CleanV2R
+#CleanVDCR         CleanClustR&&JustOneTrackR
+
+#NoTrackL          L.tr.n==0
+#JustOneTrackL     L.tr.n==1
+#CleanU1L          L.vdc.u1.nclust==1
+#CleanV1L          L.vdc.v1.nclust==1
+#CleanU2L          L.vdc.u2.nclust==1
+#CleanV2L          L.vdc.v2.nclust==1
+#CleanClustL       CleanU1L&&CleanV1L&&CleanU2L&&CleanV2L
+#CleanVDCL         CleanClustL&&JustOneTrackL
+
+# (NO cut)Reconstruct_master  CleanVDCR||CleanVDCL
+
+#NB: the following cuts must be here, not earlier, because they depend on 
+# results from physics modules (THaGoldenTrack) which are only computed in 
+# the Physics stage!
+Block: Physics
+
+##TargetCutR        abs(R.gold.y)<1.&&abs(R.gold.th)<1.&&abs(R.gold.ph)<1.
+#TargetCutR R.gold.y>-1.&&R.gold.y<1.&&R.gold.th>-1.&&R.gold.th<1.&&R.gold.ph>-1.&&R.gold.ph<1.
+#GoodTargetR       CleanVDCR&&TargetCutR
+##TargetCutL        abs(L.gold.y)<1.&&abs(L.gold.th)<1.&&abs(L.gold.ph)<1.
+#TargetCutL R.gold.y>-1.&&L.gold.y<1.&&L.gold.th>-1.&&L.gold.th<1.&&L.gold.ph>-1.&&L.gold.ph<1.
+#GoodTargetL       CleanVDCL&&TargetCutL
+
+#CenterHoleR  R.gold.ph>-0.002&&R.gold.ph<0.002&&R.gold.th>-0.006&&R.gold.th<0.004
+#CenterHoleL  L.gold.ph>-0.002&&L.gold.ph<0.002&&L.gold.th>-0.006&&L.gold.th<0.004
+##CenterHoleR       abs(R.gold.ph)<0.002&&abs(R.gold.th-0.01)<0.005
+##CenterHoleL       abs(L.gold.ph)<0.002&&abs(L.gold.th-0.01)<0.005
+

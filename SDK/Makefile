@@ -7,12 +7,13 @@
 # List only the implementation files (*.cxx). For every implementation file
 # there must be a corresponding header file (*.h).
 
-SRC  = UserDetector.cxx UserModule.cxx UserApparatus.cxx \
-       UserScintillator.cxx UserEvtHandler.cxx SkeletonModule.cxx
+SRC  = HcalDetector.cxx HcalApparatus.cxx \
+       FbusDetector.cxx FbusApparatus.cxx \
+       CdetDetector.cxx CdetApparatus.cxx
 
-# Name of your package.
+# Name of your package. 
 # The shared library that will be built will get the name lib$(PACKAGE).so
-PACKAGE = User
+PACKAGE = SBS
 
 # Name of the LinkDef file
 LINKDEF = $(PACKAGE)_LinkDef.h
@@ -31,13 +32,8 @@ export WITH_DEBUG = 1
 # Directory locations. All we need to know is INCDIRS.
 # INCDIRS lists the location(s) of the C++ Analyzer header (.h) files
 
-# The following should work with both local installations and the
-# Hall A counting house installation. For local installations, verify
-# the setting of ANALYZER, or specify INCDIRS explicitly.
-
-ifndef ANALYZER
-  $(error $$ANALYZER environment variable not defined)
-endif
+# My analyzer version
+ANALYZER=/home/adaq/analyzer
 
 INCDIRS  = $(wildcard $(addprefix $(ANALYZER)/, include src hana_decode hana_scaler))
 
@@ -50,10 +46,8 @@ endif
 
 MACHINE := $(shell uname -s)
 ARCH    := linux
-SOSUF   := so
 ifeq ($(MACHINE),Darwin)
   ARCH := macosx
-  SOSUF := dylib
 endif
 
 ROOTCFLAGS   := $(shell root-config --cflags)
@@ -66,11 +60,11 @@ CC           := $(shell root-config --cc)
 
 INCLUDES      = $(addprefix -I, $(INCDIRS) ) -I$(shell pwd)
 
-USERLIB       = lib$(PACKAGE).$(SOSUF)
+USERLIB       = lib$(PACKAGE).so
 USERDICT      = $(PACKAGE)Dict
 
-LIBS          =
-GLIBS         =
+LIBS          = 
+GLIBS         = 
 
 ifeq ($(ARCH),linux)
 # Linux with egcs (>= RedHat 5.2)
@@ -82,7 +76,7 @@ else
   LDFLAGS     = -g -O
   DEFINES     = -DNDEBUG
 endif
-CXXFLAGS     += -Wall -fPIC
+CXXFLAGS     += -Wall -Woverloaded-virtual -fPIC
 LD            = g++
 SOFLAGS       = -shared
 DEFINES      += $(shell getconf LFS_CFLAGS)
@@ -101,7 +95,7 @@ else
 endif
 DEFINES      += -DMACVERS
 CXXFLG       += -Wall -fPIC
-CXXEXTFLG     =
+CXXEXTFLG     = -Woverloaded-virtual
 LD           := $(CXX)
 LDCONFIG     :=
 SOFLAGS      := -shared -Wl,-undefined,dynamic_lookup
@@ -156,7 +150,7 @@ install:	all
 #		cp $(USERLIB) $(LIBDIR)
 
 clean:
-		rm -f *.o *~ $(USERLIB) $(USERDICT).* $(USERDICT)_rdict.pcm
+		rm -f *.o *~ $(USERLIB) $(USERDICT).*
 
 realclean:	clean
 		rm -f *.d
@@ -173,7 +167,7 @@ srcdist:
 .PHONY: all clean realclean srcdist
 
 .SUFFIXES:
-.SUFFIXES: .c .cc .cpp .cxx .o .d
+.SUFFIXES: .c .cc .cpp .cxx .C .o .d
 
 %.o:	%.cxx
 ifeq ($(strip $(MAKEDEPEND)),)
@@ -191,3 +185,4 @@ endif
 ###
 
 -include $(DEP)
+
