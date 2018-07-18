@@ -297,31 +297,31 @@ void effplot(){
 	if(hv==1){
 	  tempb = Form("(C.cdetm1r.tdcl[%d]-C.cdetm1r.tdct[%d])>%d",idx,idx,tdcw1[tdcwindex]);
 	  bcuts[bcutindex] = acuts[hacutindex] && tempb;
-	  //cout << bcuts[bcutindex].GetTitle() << endl;
+	  cout << "Cut # " << bcutindex << " " << bcuts[bcutindex].GetTitle() << endl;
 	  bcutindex++;
 	}
 	else if(hv==2){
 	  tempb = Form("(C.cdetm1r.tdcl[%d]-C.cdetm1r.tdct[%d])>%d",idx,idx,tdcw2[tdcwindex]);
 	  bcuts[bcutindex] = acuts[hacutindex] && tempb;
-	  //cout << bcuts[bcutindex].GetTitle() << endl;
+	  cout << "Cut # " << bcutindex << " " << bcuts[bcutindex].GetTitle() << endl;
 	  bcutindex++;
 	}
 	else if(hv==3){
 	  tempb = Form("(C.cdetm1r.tdcl[%d]-C.cdetm1r.tdct[%d])>%d",idx,idx,tdcw3[tdcwindex]);
 	  bcuts[bcutindex] = acuts[hacutindex] && tempb;
-	  //cout << bcuts[bcutindex].GetTitle() << endl;
+	  cout << "Cut # " << bcutindex << " " << bcuts[bcutindex].GetTitle() << endl;
 	  bcutindex++;
 	}
 	else if(hv==4){
 	  tempb = Form("(C.cdetm1r.tdcl[%d]-C.cdetm1r.tdct[%d])>%d",idx,idx,tdcw4[tdcwindex]);
 	  bcuts[bcutindex] = acuts[hacutindex] && tempb;
-	  //cout << bcuts[bcutindex].GetTitle() << endl;
+	  cout << "Cut # " << bcutindex << " " << bcuts[bcutindex].GetTitle() << endl;
 	  bcutindex++;
 	}
 	else{
 	  tempb = Form("(C.cdetm1r.tdcl[%d]-C.cdetm1r.tdct[%d])>%d",idx,idx,tdcw5[tdcwindex]);
 	  bcuts[bcutindex] = acuts[hacutindex] && tempb;
-	  //cout << bcuts[bcutindex].GetTitle() << endl;
+	  cout << "Cut # " << bcutindex << " " << bcuts[bcutindex].GetTitle() << endl;
 	  bcutindex++;
 	}
 	hacutindex++;
