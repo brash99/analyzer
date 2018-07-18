@@ -180,9 +180,6 @@ void effplot_bool_simple(){
 
   Int_t pc = ((pmt-1)*NUMPIXEL);
 
-  // Create all fourteen canvases and all the histograms now
-
-  TCanvas *sc[NUMPIXEL-1];
 
   TH1D *hh[NUMBINS]; // = new TH1D[NUMBINS];   // adc spectrum with TDC & ADC neighbors cut
   TH1D *ha[NUMBINS]; // = new TH1D[NUMBINS];   // adc with TDC crosstalk cut added to previous cuts
@@ -192,13 +189,13 @@ void effplot_bool_simple(){
   TString tmpentry;
   for(Int_t counter=0;counter<NUMBINS;counter++){
 	  tmpentry.Form("hh%d",counter);
-	  hh[counter] = new TH1D(tmpentry,tmpentry,1000,0,1000); 
+	  hh[counter] = new TH1D(tmpentry,tmpentry,100,0,500); 
 	  tmpentry.Form("ha%d",counter);
-	  ha[counter] = new TH1D(tmpentry,tmpentry,1000,0,1000); 
+	  ha[counter] = new TH1D(tmpentry,tmpentry,100,0,500); 
 	  tmpentry.Form("hb%d",counter);
-	  hb[counter] = new TH1D(tmpentry,tmpentry,1000,0,1000); 
+	  hb[counter] = new TH1D(tmpentry,tmpentry,100,0,500); 
 	  tmpentry.Form("hc%d",counter);
-	  hc[counter] = new TH1D(tmpentry,tmpentry,1000,0,1000); 
+	  hc[counter] = new TH1D(tmpentry,tmpentry,100,0,500); 
   }
 
   Bool_t temph1,temph2,temph3;
@@ -207,143 +204,8 @@ void effplot_bool_simple(){
   Bool_t* bcuts = new Bool_t[NUMBINS];
   Bool_t* ccuts = new Bool_t[NUMBINS];
 
-  Int_t ipaddle = (pmt)*NUMPADDLE+1;
-  Int_t hcutindex = 0;
-	    
-  for (Int_t pixel=0; pixel < NUMPIXEL; pixel++){
-    Int_t index = (pmt-1)*NUMPIXEL+pixel;
-    if (pixel!=pixel1[pmt-1]-1 && pixel!=pixel2[pmt-1]-1){
-      ipaddle--;
-      if (ipaddle < 2){
-	temph2 = Form("adc_c[%d]<20",paddleindex[ipaddle+1]);
-	temph3 = Form("tdcl[%d]>500",paddleindex[ipaddle]);
-	hcuts[hcutindex] = temph2 && temph3;
-	cout << "hcutindex = " << hcutindex << " val = " << hcuts[hcutindex] << endl;
-	hcutindex++;
-      }
-      else if (ipaddle > NUMPMT*NUMPADDLE){
-	temph1 = Form("adc_c[%d]<20",paddleindex[ipaddle-1]);
-	temph3 = Form("tdcl[%d]>500",paddleindex[ipaddle]);
-	hcuts[hcutindex] = temph1 && temph3;
-	cout << "hcutindex = " << hcutindex << " val = " << hcuts[hcutindex] << endl;
-	hcutindex++;
-      }
-      else{
-	temph1 = Form("adc_c[%d]<20",paddleindex[ipaddle-1]);
-	temph2 = Form("adc_c[%d]<20",paddleindex[ipaddle+1]);
-	temph3 = Form("tdcl[%d]>500",paddleindex[ipaddle]);
-	hcuts[hcutindex] = temph1 && temph2 && temph3;
-	cout << "hcutindex = " << hcutindex << " val = " << hcuts[hcutindex] << endl;
-	hcutindex++;
-      }
-    }
-  }
-
-  Bool_t tempa;
-  Int_t ipad = (pmt)*NUMPADDLE+1;
-  Int_t acutindex = 0;
- 
-  for(Int_t pix=0;pix<NUMPIXEL;pix++){
-    Int_t ind = (pmt)*NUMPADDLE;
-    if (pix!=pixel1[pmt-1]-1 && pix!=pixel2[pmt-1]-1){
-      ipad--;
-      if (ipad < 2){
-	for(Int_t s=0;s<NUMPADDLE;s++){
-	  if(ind-s != ipad){
-	    acuts[acutindex] += Form("tdcl[%d]<200",paddleindex[ind-s]);
-	  }
-	}
-	tempa = hcuts[acutindex];
-	acuts[acutindex] = acuts[acutindex] && tempa;
-	//cout << acuts[acutindex].GetTitle() << endl;
-	acutindex++;
-      }
-      else if(ipad > NUMPMT*NUMPADDLE){
-	for(Int_t s=0;s<NUMPADDLE;s++){
-	  if(ind-s != ipad){
-	    acuts[acutindex] += Form("tdcl[%d]<200",paddleindex[ind-s]);
-	  }
-	}
-	tempa = hcuts[acutindex];
-	acuts[acutindex] = acuts[acutindex] && tempa;
-	//cout << acuts[acutindex].GetTitle() << endl;
-	acutindex++;
-      }
-      else{
-	for(Int_t s=0;s<NUMPADDLE;s++){
-	  if(ind-s != ipad){
-	    acuts[acutindex] += Form("tdcl[%d]<200",paddleindex[ind-s]);
-	  }
-	}
-	tempa = hcuts[acutindex];
-	acuts[acutindex] = acuts[acutindex] && tempa;
-	//cout << acuts[acutindex].GetTitle() << endl;
-	acutindex++;
-      }
-    }
-    if(acutindex == NUMPADDLE){
-      break;
-    }
-  }
-  
-  Bool_t tempb;
-  Int_t hacutindex;
-  Int_t bcutindex;
-  Int_t tdcwindex;
-
-  for (Int_t hv=1; hv < 6; hv++){
-    hacutindex = 0;
-    tdcwindex = 0;
-    bcutindex = 0;
-    for(Int_t pxl=0;pxl<NUMPIXEL;pxl++){
-      Int_t idx = (pmt)*NUMPADDLE+pxl-2;
-      if (pxl!=pixel1[pmt-1]-1 && pxl!=pixel2[pmt-1]-1){
-	tempb = Form("(tdcl[%d]-tdct[%d])>%d",idx,idx,tdcw[hv-1][tdcwindex]);
-	bcuts[bcutindex+(hv-1)*NUMPADDLE] = acuts[hacutindex] && tempb;
-	//cout << "HV = " << hv << " Cut # " << bcutindex+(hv-1)*NUMPADDLE << bcuts[bcutindex+(hv-1)*NUMPADDLE].GetTitle() << endl;
-	bcutindex++;
-	hacutindex++;
-      }
-      tdcwindex++;
-    }
-  }
- 
-  Bool_t tempc;
-  Int_t habcutindex;
-  Int_t ccutindex;
-  Int_t thrindex;
-
-  for(Int_t HV=1; HV < 6; HV++){
-    habcutindex = 0;
-    thrindex = 0;
-    ccutindex = 0;
-    for(Int_t pxel=0; pxel < NUMPIXEL; pxel++){
-      Int_t inx = (pmt)*NUMPADDLE+pxel-2;
-      if(pxel!=pixel1[pmt-1]-1 && pxel!=pixel2[pmt-1]-1){
-	  tempc = Form("adc_c[%d]>%d", inx, thr[HV-1][thrindex]);
-	  ccuts[ccutindex+(HV-1)*NUMPADDLE] = bcuts[ccutindex+(HV-1)*NUMPADDLE] && tempc;
-	  //cout << "HV = " << HV << " Cut # " << ccutindex+(HV-1)*NUMPADDLE << ccuts[ccutindex+(HV-1)*NUMPADDLE].GetTitle() << endl;
-	  ccutindex++;
-	  habcutindex++;
-      }
-      thrindex++;
-    }
-  }
-
   cout << "Starting tree looping now!!!" << endl;
 
-
-  Int_t canindexd=0;
-  for (Int_t canvasd=0;canvasd<NUMPIXEL;canvasd++){
-   if (canvasd!=pixel1[pmt-1]-1 && canvasd!=pixel2[pmt-1]-1){
-    TString cname = Form("sc%d",canindexd+1);
-    TString ctitle = Form("Pixel %d",canvasd+1);
-    sc[canindexd] = new TCanvas(cname,ctitle,1300,400);
-    sc[canindexd]->Divide(5,1);
-    sc[canindexd]->Draw();
-   }
-   canindexd++;
-  }
 
   for (Int_t counter=0;counter<NUMBINS;counter++){
 	  af[counter]=0;
@@ -354,7 +216,7 @@ void effplot_bool_simple(){
   for(Int_t hvolt=1; hvolt < 6; hvolt++){
   //for(Int_t hvolt=1; hvolt < 2; hvolt++){
    for(Int_t id=0; id<numentries[hvolt-1];id++){
-   //for(Int_t id=0; id<100;id++){
+   //for(Int_t id=0; id<40000;id++){
     if (id%10000==0) cout << "Event = " << id << endl;
     Int_t paddle = (pmt)*NUMPADDLE+1;
     t[hvolt-1]->GetEntry(id);
@@ -441,6 +303,34 @@ void effplot_bool_simple(){
 
   cout << "Finished tree looping ... " << endl;
   
+  // Create all fourteen canvases and all the histograms now
+
+  TCanvas *sc[NUMPIXEL-1];
+  Int_t canindexd=0;
+  for (Int_t canvasd=0;canvasd<NUMPIXEL;canvasd++){
+   if (canvasd!=pixel1[pmt-1]-1 && canvasd!=pixel2[pmt-1]-1){
+    TString cname = Form("sc%d",canindexd+1);
+    TString ctitle = Form("Pixel %d",canvasd+1);
+    sc[canindexd] = new TCanvas(cname,ctitle,1300,400);
+    sc[canindexd]->Divide(5,1);
+    sc[canindexd]->Draw();
+
+    for (Int_t hvoltage = 1; hvoltage<6; hvoltage++){
+   	sc[canindexd]->cd(hvoltage);
+	hh[canindexd+(hvoltage-1)*NUMPADDLE]->SetLineColor(1);
+   	hh[canindexd+(hvoltage-1)*NUMPADDLE]->Draw();
+	ha[canindexd+(hvoltage-1)*NUMPADDLE]->SetLineColor(4);
+   	ha[canindexd+(hvoltage-1)*NUMPADDLE]->Draw("SAME");
+	hb[canindexd+(hvoltage-1)*NUMPADDLE]->SetLineColor(2);
+   	hb[canindexd+(hvoltage-1)*NUMPADDLE]->Draw("SAME");
+	hb[canindexd+(hvoltage-1)*NUMPADDLE]->SetLineColor(3);
+	hb[canindexd+(hvoltage-1)*NUMPADDLE]->SetFillColor(3);
+   	hc[canindexd+(hvoltage-1)*NUMPADDLE]->Draw("SAME");
+    }
+    canindexd++;
+   }
+  }
+  
   Int_t eindex = 0;
   for (Int_t counter=0;counter<NUMPIXEL;counter++){
     if(counter!=pixel1[pmt-1]-1 && counter!=pixel2[pmt-1]-1){
@@ -498,21 +388,23 @@ void effplot_bool_simple(){
   Int_t ecindex = 0;
   for(Int_t pind=0; pind < NUMPIXEL; pind++){
     if(pind!=pixel1[pmt-1]-1 && pind!=pixel2[pmt-1]-1){
-      TString ecname = Form("ec%d",effindex+1);
+      TString ecname = Form("ec%d",ecindex+1);
       TString ectitle = Form("Pixel %d Eff",pind+1);
       ec[ecindex] = new TCanvas(ecname,ectitle,800,800);
-      ec[ecindex]->cd();
+      ec[ecindex]->Draw();
+      ec[ecindex]->cd(ecindex+1);
       if(ecindex==NUMPADDLE){
 	break;
       }
       else {
-	//gc[ecindex]->SetPoint(0,700,eff[ecindex]);
-	//gc[ecindex]->SetPoint(1,725,eff[ecindex+NUMPADDLE]);
-	//gc[ecindex]->SetPoint(2,750,eff[ecindex+2*NUMPADDLE]);
-	//gc[ecindex]->SetPoint(3,775,eff[ecindex+3*NUMPADDLE]);
-	//gc[ecindex]->SetPoint(4,800,eff[ecindex+4*NUMPADDLE]);
-	//gc[ecindex]->Draw();
-	//gc[ecindex]->Fit("fun1","B");
+	gc[ecindex] = new TGraph(5);
+	gc[ecindex]->SetPoint(0,700,eff[ecindex]);
+	gc[ecindex]->SetPoint(1,725,eff[ecindex+NUMPADDLE]);
+	gc[ecindex]->SetPoint(2,750,eff[ecindex+2*NUMPADDLE]);
+	gc[ecindex]->SetPoint(3,775,eff[ecindex+3*NUMPADDLE]);
+	gc[ecindex]->SetPoint(4,800,eff[ecindex+4*NUMPADDLE]);
+	gc[ecindex]->Draw();
+	gc[ecindex]->Fit("fun1","B");
       }
       ecindex++;
     }
