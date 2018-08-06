@@ -293,7 +293,7 @@ TCanvas *plot_adc_fit(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=400, Int_t
 	setPaddleIndices(); //Setting the geometric paddle locations
 
 	Int_t nbin=90;
-	Int_t min=-100, max=900; // change max to 1500 for PMT 9
+	Int_t min=-100, max=1500; // change max to 1500 for PMT 9
 
 	for(Int_t i = 1; i <= NUMPIXEL; i++)
 	  {
@@ -375,7 +375,7 @@ TCanvas *plot_adc_fit(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=400, Int_t
 		  bc = htmp[i]->GetBinContent(j);
 		  if( bc == 0.0 || (bc <htmp[i]->GetBinContent(j+1) && bc < htmp[i]->GetBinContent(j+2) && bc <htmp[i]->GetBinContent(j-1) && bc <htmp[i]->GetBinContent(j-2) && bc <htmp[i]->GetBinContent(j-3) && bc <htmp[i]->GetBinContent(j-4))  ){
 		    bn = htmp[i]->GetBinCenter(j);
-		    htmp[i]->Fit("gaus","","",bn,bn+600);
+		    htmp[i]->Fit("gaus","","",bn,bn+900);
 		    break;
 		  }
 		}       
@@ -550,7 +550,7 @@ TCanvas *plot_tdc_fit(Int_t pmt=1, Int_t pixel=1, Int_t highv=800, Int_t tdc_cut
 	cTDCFit->Clear();
      	cTDCFit->cd(0);
 
-	Int_t shift = -23;
+	Int_t shift = -75;
 	Int_t paddle = (pmt-1)*NUMPIXEL+pixel-1;
 	Int_t count1 = 0;
 	Int_t count2 = 0;
@@ -1136,7 +1136,7 @@ TCanvas *plot_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=300){
         MyStyle->SetStatW(0.4);
 
         Int_t nbin=100;
-        Int_t min=0, max=500;
+        Int_t min=0, max=400;
         for(Int_t icounter=1;icounter<=NUMPIXEL;icounter++){
                 tmpentry.Form("htmpa%d", icounter);
                 htmpa[icounter - 1] = new TH1D(tmpentry,tmpentry,nbin,min,max);
@@ -1211,7 +1211,7 @@ TCanvas *plot_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=300){
 	    TString lsig = Form("sigma = %1.1f",fitsig);
 	    
 	    // create the latex object to write
-	    TLatex *tl;
+	    TLatex tl;
 	    tl->SetTextSize(0.07);
 	    tl->SetTextAngle(0);
 	    tl->SetTextColor(1);
@@ -1249,7 +1249,7 @@ TCanvas *plot_mean_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=200){
         MyStyle->SetStatW(0.4);
 
         Int_t nbin=25;
-        Int_t min=0, max=100;
+        Int_t min=0, max=200;
         for(Int_t icounter=1;icounter<=NUMPIXEL;icounter++){
                 tmpentry.Form("htmpa%d", icounter);
                 htmpa[icounter - 1] = new TH1D(tmpentry,tmpentry,nbin,min,max);

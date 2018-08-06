@@ -1,5 +1,5 @@
 Comparison of mean adc for PMT 12 at 800V before and after resistors.
-       		 (1418)	       	     	       (144)
+       		 (1418)	       	     	       (1440)
 Pixel # 	 Mean Value 	Sigma 	       Mean Value     Sigma
 2		 835.408      204.903	       173.9	      45.9
 3		 606.827      167.525	       162.3	      57.1

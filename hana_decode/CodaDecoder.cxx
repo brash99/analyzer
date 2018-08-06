@@ -13,6 +13,7 @@
 #include "THaUsrstrutils.h"
 #include "TError.h"
 #include <iostream>
+#include <cstdlib>
 
 using namespace std;
 

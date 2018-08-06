@@ -551,7 +551,7 @@ TCanvas *plot_tdc_fit(Int_t pmt=1, Int_t pixel=1, Int_t highv=800, Int_t tdc_cut
 	cTDCFit->Clear();
      	cTDCFit->cd(0);
 
-	Int_t shift = -7;
+	Int_t shift = -49;
 	Int_t paddle = (pmt-1)*NUMPIXEL+pixel-1;
 	Int_t count1 = 0;
 	Int_t count2 = 0;
@@ -1126,7 +1126,7 @@ TCanvas *plot_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=300){
         MyStyle->SetStatW(0.4);
 
         Int_t nbin=100;
-        Int_t min=0, max=200;
+        Int_t min=0, max=600;
         for(Int_t icounter=1;icounter<=NUMPIXEL;icounter++){
                 tmpentry.Form("htmpa%d", icounter);
                 htmpa[icounter - 1] = new TH1D(tmpentry,tmpentry,nbin,min,max);
@@ -1201,7 +1201,7 @@ TCanvas *plot_ratio(Int_t pmt=1, Int_t tdc_min=750, Int_t tdc_width=300){
 	    TString lsig = Form("sigma = %1.1f",fitsig);
 	    
 	    // create the latex object to write
-	    TLatex *tl;
+	    TLatex tl;
 	    tl->SetTextSize(0.07);
 	    tl->SetTextAngle(0);
 	    tl->SetTextColor(1);

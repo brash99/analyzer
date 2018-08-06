@@ -149,8 +149,8 @@ void adcplot()
   TCanvas *s1 = new TCanvas("s1","adc-compare",900,700);
   s1->cd();
 
-  TH1F *mdf = new TH1F("mdf","Comparison of Mean ADCs - PMT 8",15,0,15);
-  mdf->SetMaximum(600.0);
+  TH1F *mdf = new TH1F("mdf","Comparison of Mean ADCs - PMT 13",15,0,15);
+  mdf->SetMaximum(1000.0);
   mdf->SetMinimum(0.0);
   mdf->SetStats(0);
 
@@ -170,8 +170,8 @@ void adcplot()
   lgto = new TLegend(0.52,0.67,0.86,0.87,"");
   // lgto->AddEntry(g1, "WITH CAPACITORS (1278)", "P");
   // lgto->AddEntry(g2, "WITHOUT CAPACITORS (1313)", "P");
-  lgto->AddEntry(g1, "run 1443: without resistors", "P");
-  lgto->AddEntry(g2, "run 1511: optimized resistors", "P");
+  lgto->AddEntry(g1, "run 1440: without resistors", "P");
+  lgto->AddEntry(g2, "run 1533: optimized resistors", "P");
   lgto->SetTextFont(42);
   lgto->SetTextSize(0.025);
   lgto->SetFillStyle(0);

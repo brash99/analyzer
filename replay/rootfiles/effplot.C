@@ -84,6 +84,8 @@ void effplot(){
       if (pixel!=pixel1[pmt]-1&&pixel!=pixel2[pmt]-1){
 	ipaddle--;
 	paddleindex[ipaddle]=index;
+
+	cout << "tdc daq index = " << index << "\t paddleindex = " << ipaddle << endl;
       }
     }
   }
@@ -121,7 +123,7 @@ void effplot(){
 
   // read in the input file of threshold values
   ifstream tt; 
-  tt.open("testtext.txt",ios::in);  
+  tt.open("M1R_threshold_pmt3.dat",ios::in);  
   if(tt.is_open()){
     tt >> tx >> rn1 >> rn2 >> rn3 >> rn4 >> rn5;
     tt >> px >> pmt >> hv1 >> hv2 >> hv3 >> hv4 >> hv5;
@@ -215,7 +217,7 @@ void effplot(){
 	temph2 = Form("C.cdetm1r.adc_c[%d]<20",paddleindex[ipaddle+1]);
 	temph3 = Form("C.cdetm1r.tdcl[%d]>500",paddleindex[ipaddle]);
 	hcuts[hcutindex] = temph2 && temph3;
-	//cout << hcuts[hcutindex].GetTitle() << endl;
+	cout << hcuts[hcutindex].GetTitle() << endl;
 	hcutindex++;
       }
       else if (ipaddle > NUMPMT*NUMPADDLE){

@@ -170,7 +170,7 @@ void effplot_bool_simple(){
 	f[index]->cd();
 	t[index] = (TTree*)f[index]->Get("T");
 	t[index]->SetBranchAddress("C.cdetm1r.adc_c",&adc_c);
-	t[index]->SetBranchAddress("C.cdetm1r.adc",&adc_c);
+	t[index]->SetBranchAddress("C.cdetm1r.adc",&adc);
 	t[index]->SetBranchAddress("C.cdetm1r.tdcl",&tdcl);
 	t[index]->SetBranchAddress("C.cdetm1r.tdct",&tdct);
   	numentries[index] = t[index]->GetEntries();
