@@ -163,9 +163,6 @@ foreach(_remaining ${ROOT_FIND_COMPONENTS})
   unset(ROOT_FIND_REQUIRED_${_remaining})
 endforeach()
 
-# Register this dependency
-config_add_dependency(ROOT ${ROOT_FIND_VERSION})
-
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ROOT
   REQUIRED_VARS ROOTSYS ROOT_LIBRARY_DIR ROOT_BINARY_DIR ROOT_INCLUDE_DIR
@@ -175,39 +172,119 @@ find_package_handle_standard_args(ROOT
 
 endif(NOT TARGET ROOT::Libraries)
 
-## Override root's ROOT_GENERATE_DICTIONARY macro to be less error-prone. This
-## is done by only allowing for explicitly speficied header locations/include
-## directories, instead of using the full search path for this module.
-function(root_generate_dictionary dictionary)
+find_program(MK_ROOTDICT mk_rootdict.sh
+  HINTS
+    ${CMAKE_CURRENT_LIST_DIR}/..
+  PATH_SUFFIXES scripts
+  DOC "Wrapper script for ROOT dictionary generator"
+  )
+if(NOT MK_ROOTDICT)
+  message(FATAL_ERROR
+    "FindROOT: Cannot find mk_rootdict.sh. Check your Podd installation.")
+endif()
+
+# BUILD_ROOT_DICTIONARY(dictionary
+#                       LINKDEF <theLinkDef.h>
+#                       [ TARGETS <target> [ <target> ... ]
+#                       [ INCLUDEDIRS <dir> [ <dir ... ]
+#                       [ OPTIONS [ <options> ]
+#                       [ PCMNAME <pcmname> ]
+#                       <header> [ <header> ... ] )
+#
+# Build ROOT dictionary for ROOT 5 and 6
+#
+# Arguments:
+#   dictionary:    dictionary base name (required). Output file will be
+#                  ${dictionary}Dict.cxx
+#   LINKDEF:       name of LinkDef.h file (required)
+#   TARGETS:       CMake targets from which to get -I arguments and -D definitions
+#   INCLUDEDIRS:   paths to use for -I arguments
+#   OPTIONS:       additional options for rootcling/rootcint
+#   PCMNAME:       base name of PCM file (ROOT 6 only). Defaults to ${dictionary}.
+#                  Output will be lib${pcmname}_rdict.pcm.
+#
+# Creates a custom target ${dictionary}_ROOTDICT.
+# With ROOT 6, also installs the PCM file in ${CMAKE_INSTALL_LIBDIR}
+#
+function(build_root_dictionary dictionary)
+
+  if(DEFINED ROOT_VERSION AND DEFINED ROOTSYS)
+    if(NOT ${ROOT_VERSION} VERSION_LESS 6)
+      find_program(ROOTCLING rootcling HINTS "${ROOTSYS}/bin")
+      if(NOT ROOTCLING)
+	message(FATAL_ERROR
+	  "root_generate_dictionary: Cannot find rootcling. Check ROOT installation.")
+      endif()
+    else()
+      find_program(ROOTCINT rootcint HINTS "${ROOTSYS}/bin")
+      if(NOT ROOTCINT)
+	message(FATAL_ERROR
+	  "root_generate_dictionary: Cannot find rootcint. Check ROOT installation.")
+      endif()
+    endif()
+  else()
+    message(FATAL_ERROR "root_generate_dictionary: ROOT is not set up")
+  endif()
+
   cmake_parse_arguments(RGD "" "PCMNAME" "INCLUDEDIRS;LINKDEF;OPTIONS;TARGETS" ${ARGN})
 
-  # Include directories: everything from any given targets, plus any
-  # explicitly given directories
+  if(NOT RGD_LINKDEF)
+    message(FATAL_ERROR "root_generate_dictionary: Required argument LINKDEF missing")
+  endif()
+
+  # Compile definitions and include directories from the given target(s)
+  set(defines)
   set(incdirs)
   foreach(tgt IN LISTS RGD_TARGETS)
+    list(APPEND defines $<TARGET_PROPERTY:${tgt},COMPILE_DEFINITIONS>)
     list(APPEND incdirs $<TARGET_PROPERTY:${tgt},INCLUDE_DIRECTORIES>)
   endforeach()
+
+  # Add any explicitly specified include directories
   list(APPEND incdirs ${RGD_INCLUDEDIRS})
 
-  if(RGD_PCMNAME)
-    set(pcmname ${RGD_PCMNAME})
+  if(ROOTCLING)
+    # ROOT6
+    if(RGD_PCMNAME)
+      set(pcmname ${RGD_PCMNAME})
+    else()
+      set(pcmname ${dictionary})
+    endif()
+    add_custom_command(
+      OUTPUT ${dictionary}Dict.cxx lib${pcmname}_rdict.pcm
+      COMMAND ${MK_ROOTDICT}
+      ARGS
+	${ROOTCLING}
+	-f ${dictionary}Dict.cxx
+	-s lib${pcmname}
+	${RGD_OPTIONS}
+	INCDIRS "${incdirs}"
+	DEFINES "${defines}"
+	${RGD_UNPARSED_ARGUMENTS}
+	${RGD_LINKDEF}
+	VERBATIM
+	DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
+      )
+    set(PCM_FILE ${CMAKE_CURRENT_BINARY_DIR}/lib${pcmname}_rdict.pcm)
+    install(FILES ${PCM_FILE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
   else()
-    set(pcmname ${dictionary})
+    # ROOT5
+    add_custom_command(
+      OUTPUT ${dictionary}Dict.cxx
+      COMMAND ${MK_ROOTDICT}
+      ARGS
+	${ROOTCINT}
+	-f ${dictionary}Dict.cxx
+	-c ${RGD_OPTIONS}
+	INCDIRS "${incdirs}"
+	DEFINES "${defines}"
+	${RGD_UNPARSED_ARGUMENTS}
+	${RGD_LINKDEF}
+	VERBATIM
+	DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
+      )
   endif()
-  ## find and call ROOTCLING
-  find_program(ROOTCLING rootcling)
-  add_custom_command(
-    OUTPUT ${dictionary}Dict.cxx lib${pcmname}_rdict.pcm
-    COMMAND ${MK_ROOTDICT}
-    ARGS
-      ${ROOTCLING}
-      -f ${dictionary}Dict.cxx
-      -s lib${pcmname}
-      ${RGD_OPTIONS}
-      -I\"${incdirs}\"
-      ${RGD_UNPARSED_ARGUMENTS}
-      ${RGD_LINKDEF}
-    DEPENDS ${RGD_LINKDEF}
-    )
-# FIXME: needs to depend on all include files as well; this macro is so broken
-endfunction(root_generate_dictionary)
+  add_custom_target(${dictionary}_ROOTDICT
+    DEPENDS ${dictionary}Dict.cxx
+  )
+endfunction()

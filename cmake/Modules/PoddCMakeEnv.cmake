@@ -26,7 +26,10 @@ endif()
 # Useful shorthands
 string(TOLOWER ${PROJECT_NAME} PROJECT_NAME_LC)
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UC)
-
+if("${CMAKE_PROJECT_NAME}" STREQUAL "${PROJECT_NAME}")
+  set(MAIN_PROJECT_NAME ${PROJECT_NAME})
+  string(TOLOWER ${PROJECT_NAME} MAIN_PROJECT_NAME_LC)
+endif()
 if(NOT PROJECT_VERSION_PATCH)
   set(PROJECT_VERSION_PATCH 0)
 endif()
@@ -36,13 +39,8 @@ endif()
 if(NOT PROJECT_VERSION_MAJOR)
   set(PROJECT_VERSION_MAJOR 0)
 endif()
-math(EXPR ${PROJECT_NAME_UC}_VERCODE "${PROJECT_VERSION_MAJOR} * 65536 + ${PROJECT_VERSION_MINOR} * 256 + ${PROJECT_VERSION_PATCH}")
-
-find_program(MK_ROOTDICT mk_rootdict.sh
-  PATHS ${CMAKE_CURRENT_LIST_DIR}/../..
-  PATH_SUFFIXES scripts
-  DOC "Wrapper script for ROOT dictionary generator"
-  )
+math(EXPR ${PROJECT_NAME_UC}_VERCODE
+  "${PROJECT_VERSION_MAJOR} * 65536 + ${PROJECT_VERSION_MINOR} * 256 + ${PROJECT_VERSION_PATCH}")
 
 #============================================================================
 # Remove duplicates from space-separated list of items
@@ -85,7 +83,7 @@ endmacro(set_cxx_std)
 macro(set_compiler_flags _suggested_flags)
   check_cxx_compiler_flag(-pipe cxx-compiler-supports-pipe)
   check_cxx_compiler_flag(-fsigned-char cxx-compiler-supports-fsigned-char)
-  check_cxx_compiler_flag(-fsigned-char cxx-compiler-supports-fexceptions)
+  check_cxx_compiler_flag(-fomit-frame-pointer cxx-compiler-supports-fomit-frame-pointer)
   check_cxx_compiler_flag(-mtune=generic cxx-compiler-supports-mtune-generic)
   if(APPLE)
     check_cxx_compiler_flag(-Qunused-arguments cxx-compiler-supports-Qunused-arguments)
@@ -95,9 +93,6 @@ macro(set_compiler_flags _suggested_flags)
   endif()
   if(cxx-compiler-supports-fsigned-char)
     set(${PROJECT_NAME_UC}_CXX_FLAGS "${${PROJECT_NAME_UC}_CXX_FLAGS} -fsigned-char")
-  endif()
-  if(cxx-compiler-supports-fsigned-char)
-    set(${PROJECT_NAME_UC}_CXX_FLAGS "${${PROJECT_NAME_UC}_CXX_FLAGS} -fexceptions")
   endif()
   if(cxx-compiler-supports-mtune-generic)
     set(${PROJECT_NAME_UC}_CXX_FLAGS "${${PROJECT_NAME_UC}_CXX_FLAGS} -mtune=generic")
@@ -117,6 +112,11 @@ macro(set_compiler_flags _suggested_flags)
   unset(cxx-compiler-supports-fexceptions)
   unset(cxx-compiler-supports-mtune-generic)
   unset(cxx-compiler-supports-Qunused-arguments)
+  # Configuration dependent options. Avoid ugly generator expressions
+  if(cxx-compiler-supports-fomit-frame-pointer)
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fno-omit-frame-pointer")
+  endif()
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 endmacro(set_compiler_flags)
 
 #----------------------------------------------------------------------------

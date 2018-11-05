@@ -65,8 +65,8 @@ Int_t CodaDecoder::LoadEvent(const UInt_t* evbuffer)
 {
   // Main engine for decoding, called by public LoadEvent() methods
 
-  if (fCodaVersion == 0) {
-     cout << "This makes no sense, coda version zero ??  Exit !!"<<endl;
+  if (fCodaVersion <= 0) {
+     cout << "This makes no sense, coda version "<<fCodaVersion<<" ??  Exit !!"<<endl;
      exit(0);
   }
   event_length = evbuffer[0]+1;  // in longwords (4 bytes)
@@ -84,7 +84,7 @@ Int_t CodaDecoder::LoadEvent(const UInt_t* evbuffer)
      ret = init_cmap();
      if (fDebugFile) {
 	 *fDebugFile << "\n CodaDecode:: Print of Crate Map"<<endl;
-	 fMap->print(fDebugFile);
+	 fMap->print(*fDebugFile);
      } else {
       //      fMap->print();
      }
@@ -628,24 +628,35 @@ Int_t CodaDecoder::FindRocsCoda3(const UInt_t *evbuffer) {
   /* Sanity check:  Check if number of ROCs matches */
   if(nroc != tbank.nrocs) {
       printf(" ****ERROR: Trigger and Physics Block sizes do not match (%d != %d)\n",nroc,tbank.nrocs);
+// If you are reading a data file orignally written with CODA 2 and then
+// processed (written out) with EVIO 4, it will segfault. Do as it says below.
+      printf("This might indicate a file written with EVIO 4 that was a CODA 2 file\n");
+      printf("Try  analyzer->SetCodaVersion(2)  in the analyzer script.\n");
+
   }
 
   if (fDebugFile) {  // debug   
 
-    *fDebugFile << "\n  FindRocsCoda3 :: Starting Event number = "<<dec<<tbank.evtNum<<endl;
+    *fDebugFile << endl << "  FindRocsCoda3 :: Starting Event number = " << dec << tbank.evtNum;
+    *fDebugFile << endl;
     *fDebugFile << "    Trigger Bank Len = "<<tbLen<<" words "<<endl;
     *fDebugFile << "    There are "<<nroc<<"  ROCs"<<endl;
     for(Int_t i=0;i<nroc;i++) {
-      *fDebugFile << "     ROC ID = "<<irn[i]<<"  pos = "<<rocdat[irn[i]].pos<<"  Len = "<<rocdat[irn[i]].len<<endl;
+      *fDebugFile << "     ROC ID = "<<irn[i]<<"  pos = "<<rocdat[irn[i]].pos
+          <<"  Len = "<<rocdat[irn[i]].len<<endl;
     }
     *fDebugFile << "    Trigger BANK INFO,  TAG = "<<hex<<tbank.tag<<dec<<endl;
-    *fDebugFile << "    start "<<hex<<tbank.start<<"      blksize "<<dec<<tbank.blksize<<"  len "<<tbank.len<<"   tag "<<tbank.tag<<"   nrocs "<<tbank.nrocs<<"   evtNum "<<tbank.evtNum<<endl;
+    *fDebugFile << "    start "<<hex<<tbank.start<<"      blksize "<<dec<<tbank.blksize
+        <<"  len "<<tbank.len<<"   tag "<<tbank.tag<<"   nrocs "<<tbank.nrocs<<"   evtNum "<<tbank.evtNum;
+    *fDebugFile << endl;
     *fDebugFile << "         Event #       Time Stamp       Event Type"<<endl;
     for(Int_t i=0; i<tbank.blksize; i++) {
        if(tbank.evTS != NULL) {
-          *fDebugFile << "      "<<dec<<tbank.evtNum+i<<"   "<<tbank.evTS[i]<<"   "<<tbank.evType[i]<<endl;
+          *fDebugFile << "      "<<dec<<tbank.evtNum+i<<"   "<<tbank.evTS[i]<<"   "<<tbank.evType[i];
+          *fDebugFile << endl;
        } else {
-	  *fDebugFile << "     "<<tbank.evtNum+i<<"(No Time Stamp)   "<<tbank.evType[i]<<endl;
+	  *fDebugFile << "     "<<tbank.evtNum+i<<"(No Time Stamp)   "<<tbank.evType[i];
+	  *fDebugFile << endl;
        }
        *fDebugFile << endl<<endl;
     }
