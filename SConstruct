@@ -5,13 +5,16 @@
 
 import os
 import glob
-import configure
-import podd_util
+import sys
 
 EnsureSConsVersion(2,3,0)
 
 baseenv = Environment(ENV = os.environ,tools=["default","disttar","symlink","rootcint"],
                       toolpath=['site_scons'])
+
+sys.path.insert(0,'./site_scons')
+import configure
+import podd_util
 
 #baseenv.Append(verbose = 5)
 
@@ -109,7 +112,7 @@ baseenv.Append(LIBPATH=['$HA_HallA','$HA_Podd','$HA_DC'])
 baseenv.Prepend(LIBS=['HallA','Podd','dc'])
 baseenv.Append(RPATH = ['$HA_HallA','$HA_Podd','$HA_DC'])
 
-SConscript(dirs = ['Podd', 'HallA', 'hana_decode', 'apps', 'hana_decode/apps'],
+SConscript(dirs = ['Podd', 'HallA', 'hana_decode', 'apps'],
            name='SConscript.py',exports='baseenv')
 
 # Install site_scons so that modules can be built against the installation

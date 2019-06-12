@@ -505,8 +505,6 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
   static const char* const here = "Init";
   Int_t retval = 0;
 
-  if (fWantCodaVers > 0) run->SetCodaVersion(fWantCodaVers);
-
   //--- Open the output file if necessary so that Trees and Histograms
   //    are created on disk.
 
@@ -614,8 +612,13 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
     new_decoder = true;
   }
 
-  if (fWantCodaVers > 0) fEvData->SetCodaVersion(fWantCodaVers);
-
+  // If we've been told to use a specific CODA version, tell the run
+  // object about it. (FIXME: This may not work with non-CODA runs.)
+  if( fWantCodaVers > 0 && run->SetDataVersion(fWantCodaVers) < 0 ) {
+    Error( here, "Failed to set CODA version %d for run. Call expert.",
+        fWantCodaVers );
+    return 242;
+  }
   // Make sure the run is initialized.
   bool run_init = false;
   if( !run->IsInit()) {
@@ -690,6 +693,9 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
   // Tell the decoder the run time. This will trigger decoder
   // initialization (reading of crate map data etc.)
   fEvData->SetRunTime( run_time.Convert());
+
+  // Tell the decoder about the run's CODA version
+  fEvData->SetDataVersion( run->GetDataVersion() );
 
   // Initialize all apparatuses, scalers, and physics modules.
   // Quit if any errors.
@@ -777,25 +783,28 @@ Int_t THaAnalyzer::InitOutput( const TList* module_list,
   if( !module_list )
     return -3-erroff;
   TIter next( module_list );
-  bool fail = false;
   Int_t retval = 0;
   TObject* obj;
-  while( !fail && (obj = next())) {
+  while( (obj = next()) ) {
     if( baseclass && !obj->IsA()->InheritsFrom( baseclass )) {
       Error( here, "Object %s (%s) is not a %s. Analyzer initialization "
-	     "failed.", obj->GetName(), obj->GetTitle(), baseclass );
+          "failed.", obj->GetName(), obj->GetTitle(), baseclass );
       retval = -2;
-      fail = true;
-    } else {
-      THaAnalysisObject* theModule = dynamic_cast<THaAnalysisObject*>( obj );
-      theModule->InitOutput( fOutput );
-      if( !theModule->IsOKOut() ) {
-	Error( here, "Error initializing output for  %s (%s). "
-	       "Analyzer initialization failed.",
-	       obj->GetName(), obj->GetTitle() );
-	retval = -1;
-	fail = true;
-      }
+      break;
+    }
+    THaAnalysisObject* theModule = dynamic_cast<THaAnalysisObject*>( obj );
+    if( !theModule ) {
+      Error( here, "Object %s (%s) is not a THaAnalysisObject. Analyzer "
+          "initialization failed.", obj->GetName(), obj->GetTitle() );
+      retval = -2;
+      break;
+    }
+    theModule->InitOutput( fOutput );
+    if( !theModule->IsOKOut() ) {
+      Error( here, "Error initializing output for  %s (%s). "
+          "Analyzer initialization failed.", obj->GetName(), obj->GetTitle() );
+      retval = -1;
+      break;
     }
   }
   return (retval == 0) ? 0 : retval - erroff;
@@ -819,13 +828,6 @@ Int_t THaAnalyzer::ReadOneEvent()
   Int_t status = THaRunBase::READ_OK;
   if (to_read_file)
     status = fRun->ReadEvent();
-
-  // there may be a better place to do this, but this works
-  if (fWantCodaVers > 0) {
-    fEvData->SetCodaVersion(fWantCodaVers);
-  } else {
-    fEvData->SetCodaVersion(fRun->GetCodaVersion());
-  }
 
   switch( status ) {
   case THaRunBase::READ_OK:
@@ -1520,17 +1522,15 @@ Int_t THaAnalyzer::Process( THaRunBase* run )
 }
 
 //_____________________________________________________________________________
-void THaAnalyzer::SetCodaVersion(Int_t vers)
+void THaAnalyzer::SetCodaVersion( Int_t vers )
 {
   if (vers != 2 && vers != 3) {
-    cout << "ERROR:THaRunBase:SetCodaVersion versions must be 2 or 3"<<endl;
-    cout << "Setting version = 2 by default "<<endl;
-    fWantCodaVers = 2;
-    return;
+    Warning( "THaAnalyzer::SetCodaVersion", "Illegal CODA version = %d. "
+        "Must be 2 or 3. Setting version to 2.", vers );
+    vers = 2;
   }
   fWantCodaVers = vers;
 }
-
 
 //_____________________________________________________________________________
 

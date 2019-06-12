@@ -309,7 +309,8 @@ int THaSlotData::loadData(int chan, int dat, int raw) {
 }
 
 
-void THaSlotData::print() const {
+void THaSlotData::print() const
+{
   if (fDebugFile) {
     print_to_file();
     return;
@@ -332,6 +333,7 @@ void THaSlotData::print() const {
   }
   for (i=k; i<getNumRaw(); i++) cout << getRawData(i) << "  ";
   first = true;
+  ios_base::fmtflags fmt = cout.flags();
   for (chan=0; chan<(int)maxc; chan++) {
     if (getNumHits(chan) > 0) {
       if (first) {
@@ -348,6 +350,7 @@ void THaSlotData::print() const {
       }
     }
   }
+  cout.flags(fmt);
   return;
 }
 
@@ -389,6 +392,47 @@ void THaSlotData::print_to_file() const {
     }
   }
   return;
+}
+
+//_____________________________________________________________________________
+int THaSlotData::compressdataindexImpl( int numidx )
+{
+  // first check if it is more favourable to expand it, or to reshuffle
+  if( numholesdataidx/static_cast<double>(alloci) > 0.5 &&
+      numholesdataidx > numidx ) {
+    // Maybe reshuffle. But how many active dataindex entries would we need?
+    UShort_t nidx = numidx;
+    for (UShort_t i=0; i<numchanhit; i++) {
+      nidx += numMaxHits[ chanlist[i] ];
+    }
+    if( nidx <= alloci ) {
+      // reshuffle, lots of holes
+      UShort_t* tmp = new UShort_t[alloci];
+      firstfreedataidx=0;
+      for (UShort_t i=0; i<numchanhit; i++) {
+	UShort_t chan=chanlist[i];
+	for (UShort_t j=0; j<numHits[chan]; j++) {
+	  tmp[firstfreedataidx+j]=dataindex[idxlist[chan]+j];
+	}
+	idxlist[chan] = firstfreedataidx;
+	firstfreedataidx=firstfreedataidx+numMaxHits[chan];
+      }
+      delete [] dataindex; dataindex=tmp;
+      return 0;
+    }
+  }
+  // If we didn't reshuffle, grow the array instead
+  UShort_t old_alloci = alloci;
+  alloci *= 2;
+  if( firstfreedataidx+numidx > static_cast<int>(alloci) )
+    // Still too small?
+    alloci = 2*(firstfreedataidx+numidx);
+  // FIXME one should check that it doesnt grow too much
+  UShort_t* tmp = new UShort_t[alloci];
+  memcpy(tmp,dataindex,old_alloci*sizeof(UShort_t));
+  delete [] dataindex; dataindex = tmp;
+
+  return 0;
 }
 
 }
