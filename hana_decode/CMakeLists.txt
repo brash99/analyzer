@@ -9,10 +9,18 @@ set(SUBPROJECT_NAME Decode)
 #----------------------------------------------------------------------------
 # Configuration options
 option(ONLINE_ET "Enable support ET message system" OFF)
+option(STANDALONE "Enable building of test/example programs" OFF)
 
 #----------------------------------------------------------------------------
 # Required dependencies
-find_package(EVIO REQUIRED)
+find_package(EVIO CONFIG QUIET)
+if(NOT EVIO_FOUND)
+  find_package(EVIO MODULE)
+  if(NOT EVIO_FOUND)
+    include(FetchBuildEVIO)
+  endif()
+endif()
+
 if(ONLINE_ET)
   find_package(ET)
 endif()
@@ -37,7 +45,6 @@ set(src
   Scaler3800.cxx
   Scaler3801.cxx
   Scaler560.cxx
-  SimDecoder.cxx
   THaCodaData.cxx
   THaCodaFile.cxx
   THaCrateMap.cxx
@@ -58,7 +65,7 @@ if(ONLINE_ET)
   else()
     message(WARNING
       "Cannot find ET system. Check $CODA environment variable. Disabling ONLINE_ET")
-    set(ONLINE_ET FALSE)
+    set(ONLINE_ET FALSE CACHE BOOL "ET system not found, disabled" FORCE)
   endif()
 endif()
 
@@ -86,17 +93,15 @@ endif()
 
 target_include_directories(${LIBNAME}
   PUBLIC
-    $<INSTALL_INTERFACE:include>
+    $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-  PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src
   )
 target_link_libraries(${LIBNAME}
   PUBLIC
     ROOT::Core
+    ${ONLIBS}    # et.h is in the THaEtClient.h public interface
   PRIVATE
     EVIO::EVIO
-    ${ONLIBS}
   )
 set_target_properties(${LIBNAME} PROPERTIES
   SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
@@ -105,7 +110,7 @@ set_target_properties(${LIBNAME} PROPERTIES
   )
 
 install(TARGETS ${LIBNAME}
-  EXPORT ${PROJECT_NAME_LC}-exports
+  EXPORT ${MAIN_PROJECT_NAME_LC}-exports
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   )
@@ -113,15 +118,14 @@ install(FILES ${allheaders} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 #----------------------------------------------------------------------------
 # libdcDict dictionary
-get_target_definitions(${LIBNAME} defines)
-root_generate_dictionary(lib${LIBNAME} ${defines} ${headers}
+build_root_dictionary(lib${LIBNAME} ${headers}
   TARGETS ${LIBNAME}
   PCMNAME ${LIBNAME}
   LINKDEF ${ALTLIBNAME}_LinkDef.h
   )
-set(PCM_FILE ${CMAKE_CURRENT_BINARY_DIR}/lib${LIBNAME}_rdict.pcm)
 
-add_custom_target(lib${LIBNAME}_ROOTDICT
-  DEPENDS ${src} ${headers} ${ALTLIBNAME}_LinkDef.h lib${LIBNAME}Dict.cxx
-  )
-install(FILES ${PCM_FILE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+#----------------------------------------------------------------------------
+# Standalone excutables
+if(STANDALONE)
+  add_subdirectory(apps)
+endif()

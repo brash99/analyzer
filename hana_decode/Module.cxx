@@ -19,18 +19,18 @@ namespace Decoder {
 Module::Module()
   : fCrate(0), fSlot(0), fHeader(0), fHeaderMask(0xffffffff), fBank(-1),
     fWordsExpect(0), fWordsSeen(0), fWdcntMask(0), fWdcntShift(0),
-    fModelNum(-1), fNumChan(0), fMode(0), block_size(1),
-    fMultiBlockMode(kFALSE), fBlockIsDone(kFALSE), fFirmwareVers(0),
-    fDebugFile(0), fExtra(0)
+    fModelNum(-1), fNumChan(0), fMode(0), block_size(1), IsInit(false),
+    fMultiBlockMode(false), fBlockIsDone(false), fFirmwareVers(0),
+    fDebug(0), fDebugFile(0), fExtra(0)
 {
 }
 
 Module::Module(Int_t crate, Int_t slot)
   : fCrate(crate), fSlot(slot), fHeader(0), fHeaderMask(0xffffffff), fBank(-1),
     fWordsExpect(0), fWordsSeen(0), fWdcntMask(0), fWdcntShift(0),
-    fModelNum(-1), fNumChan(0), fMode(0), block_size(1),
-    fMultiBlockMode(kFALSE), fBlockIsDone(kFALSE), fFirmwareVers(0),
-    fDebugFile(0), fExtra(0)
+    fModelNum(-1), fNumChan(0), fMode(0), block_size(1), IsInit(false),
+    fMultiBlockMode(false), fBlockIsDone(false), fFirmwareVers(0),
+    fDebug(0), fDebugFile(0), fExtra(0)
 {
   // Warning: see comments at Init()
   fName = "";
@@ -40,7 +40,8 @@ Module::~Module() {
 }
 
 
-void Module::Init() {
+void Module::Init()
+{
 // Suggestion: call this Init() before calling the inherting class's Init.
 // Otherwise some variables may be undefined.  The "factory" method
 // using TClass::New does NOT call the c'tor of this base class !!
@@ -52,6 +53,7 @@ void Module::Init() {
   fWordsExpect = 0;
   fWdcntMask=0;
   fWdcntShift=0;
+  fDebug = 0;
   fDebugFile=0;
   fModelNum = -1;
   fName = "";

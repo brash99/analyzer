@@ -26,12 +26,12 @@ namespace Decoder {
 
     struct ModuleType {
     public:
-      ModuleType ( const char *c1, Int_t i1 )
+      ModuleType ( const char *c1, UInt_t i1 )
 	: fClassName(c1), fMapNum(i1), fTClass(0) {}
-      ModuleType() : fClassName(0), fTClass(0) {} // For ROOT RTTI
+      ModuleType() : fClassName(0), fMapNum(0), fTClass(0) {} // For ROOT RTTI
       bool operator<( const ModuleType& rhs ) const { return fMapNum < rhs.fMapNum; }
       const char*      fClassName;
-      Int_t            fMapNum;
+      UInt_t           fMapNum;
       mutable TClass*  fTClass;
     };
     typedef std::set<ModuleType> TypeSet_t;
@@ -87,7 +87,7 @@ namespace Decoder {
 
     virtual void Init();
 
-    virtual void Clear(const Option_t* = "") { fWordsSeen = 0; };
+    virtual void Clear(Option_t* = "") { fWordsSeen = 0; };
 
     virtual Bool_t IsSlot(UInt_t rdata);
 
@@ -124,6 +124,7 @@ namespace Decoder {
     Bool_t fMultiBlockMode, fBlockIsDone;
     Int_t fFirmwareVers;
 
+    Int_t fDebug;
     std::ofstream *fDebugFile;
 
     TObject* fExtra;  // additional member data, for binary compatibility

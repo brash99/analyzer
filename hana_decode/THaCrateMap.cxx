@@ -20,27 +20,46 @@
 #include <iostream>
 #include <ctime>
 
-#ifndef STANDALONE
-#include "THaAnalysisObject.h"
-#endif
-
 #include "TDatime.h"
 #include "TError.h"
+#include "TSystem.h"
 
 #include <cstdio>
+#include <errno.h>  // for errno
 #include <string>
 #include <iomanip>
-
 #include <sstream>
+#include <unistd.h>
+#include <cstring>  // for strerror_r
+
+// This is a well-known problem with strerror_r
+#if defined(__linux__) && (defined(_GNU_SOURCE) || !(_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE > 600))
+# define GNU_STRERROR_R
+#endif
 
 using namespace std;
 
+static string StrError()
+{
+  // Return description of current errno as a std::string
+  const size_t BUFLEN = 128;
+  char buf[BUFLEN];
+
+#ifdef GNU_STRERROR_R
+  string ret = strerror_r(errno, buf, BUFLEN);
+#else
+  strerror_r(errno, buf, BUFLEN);
+  string ret = buf;
+#endif
+  return ret;
+}
+
 namespace Decoder {
 
-const UShort_t THaCrateMap::MAXCHAN = 4096;
-const UShort_t THaCrateMap::MAXDATA = 32768;
-const int THaCrateMap::CM_OK = 1;
-const int THaCrateMap::CM_ERR = -1;
+const UInt_t THaCrateMap::MAXCHAN = 8192;
+const UInt_t THaCrateMap::MAXDATA = 65536;
+const Int_t  THaCrateMap::CM_OK = 1;
+const Int_t  THaCrateMap::CM_ERR = -1;
 
 THaCrateMap::THaCrateMap( const char* db_filename )
 {
@@ -93,8 +112,8 @@ int THaCrateMap::setCrateType(int crate, const char* ctype) {
   return CM_OK;
 }
 
-int THaCrateMap::setModel(int crate, int slot, UShort_t mod,
-			  UShort_t nc, UShort_t nd ) {
+int THaCrateMap::setModel(int crate, int slot, UInt_t mod,
+			  UInt_t nc, UInt_t nd ) {
   assert( crate >= 0 && crate < MAXROC && slot >= 0 && slot < MAXSLOT );
   setUsed(crate,slot);
   crdat[crate].model[slot] = mod;
@@ -105,11 +124,11 @@ int THaCrateMap::setModel(int crate, int slot, UShort_t mod,
   return CM_OK;
 }
 
-int THaCrateMap::SetModelSize( int crate, int slot, UShort_t imodel )
+int THaCrateMap::SetModelSize( int crate, int slot, UInt_t imodel )
 {
   // Set the max number of channels and data words for some known modules
   assert( crate >= 0 && crate < MAXROC && slot >= 0 && slot < MAXSLOT );
-  struct ModelPar_t { UShort_t model, nchan, ndata; };
+  struct ModelPar_t { UInt_t model, nchan, ndata; };
   static const ModelPar_t modelpar[] = {
     { 1875, 64, 512 },  // Detector TDC
     { 1877, 96, 672 },  // Wire-chamber TDC
@@ -185,93 +204,112 @@ void THaCrateMap::incrNslot(int crate) {
   }
 }
 
-int THaCrateMap::init(ULong64_t tloc) {
-  // Modify the interface to be able to use a database file.
-  // The real work is done by the init(TString&) method
 
-  // Only print warning/error messages exactly once
-  //  static bool first = true;
-  static const char* const here = "THaCrateMap::init";
+int THaCrateMap::init( FILE* fi, const TString& fname )
+{
+  // Get the crate map definition string from the given database file.
+  // The file is read completely into an internal string, which is then
+  // parsed by init(TString).
 
-  //FIXME: replace with TTimeStamp
-  TDatime date((UInt_t)tloc);
+  const char* const here = "THaCrateMap::init";
 
-  TString db;
-
-#ifndef STANDALONE
-  FILE* fi = THaAnalysisObject::OpenFile(fDBfileName,date,here,"r",0);
-#else
-  TString fname = "db_"; fname.Append(fDBfileName); fname.Append(".dat");
-  FILE* fi = fopen(fname,"r");
-#endif
-  if ( fi ) {
-    // just build the string to parse later
-    int ch;
-    while ( (ch = fgetc(fi)) != EOF ) {
-      db += static_cast<char>(ch);
-    }
-    fclose(fi);
-  }
-
-  if ( db.Length() <= 0 ) {
-    // Die if we can't open the crate map file
-    ::Error( here, "Error reading crate map database file db_%s.dat",
-	    fDBfileName.Data() );
+  if ( !fi ) {
+    ::Error( here, "Error opening crate map database file %s: %s",
+        fname.Data(), StrError().c_str() );
     return CM_ERR;
   }
+  // Build the string to parse
+  TString db;
+  int ch;
+  while( (ch = fgetc(fi)) != EOF ) {
+    db += static_cast<char>(ch);
+  }
+  if( ferror(fi) ) {
+    ::Error( here, "Error reading crate map database file %s: %s",
+        fname.Data(), StrError().c_str() );
+    fclose(fi);
+    return CM_ERR;
+  }
+  fclose(fi);
+
+  // Parse the crate map definition
   return init(db);
 }
 
-void THaCrateMap::print(ofstream *file) const {
+int THaCrateMap::init(ULong64_t /*tloc*/)
 {
-  for( int roc=0; roc<MAXROC; roc++ ) {
-    if( !crdat[roc].crate_used || crdat[roc].nslot ==0 ) continue;
-    *file << "==== Crate " << roc << " type " << crdat[roc].crate_type;
-    if( !crdat[roc].scalerloc.IsNull() )  *file << " \"" << crdat[roc].scalerloc << "\"";
-    *file << endl;
-    *file << "#slot\tmodel\tclear\t  header\t  mask  \tnchan\tndata\n";
-    if (isBankStructure(roc)) *file << "crate has bank structure"<<endl;
-    for( int slot=0; slot<MAXSLOT; slot++ ) {
-      if( !slotUsed(roc,slot) ) continue;
-      *file << "  " << slot << "\t" << crdat[roc].model[slot]
-	   << "\t" << crdat[roc].slot_clear[slot];
-      *file << "   \t0x" << hex << crdat[roc].header[slot]
-	   << "    \t0x" << hex  << crdat[roc].headmask[slot]
-	   << dec << "   "
-	   << "  \t" << crdat[roc].nchan[slot]
-	   << "  \t" << crdat[roc].ndata[slot]
-	   << endl;
-      Int_t bank = getBank(roc,slot);
-      if (bank >= 0) *file << "Bank number "<< bank<<endl;
+  // Initialize the crate map from the database.
+  //
+  // If a time-dependent or run-number indexed database is available,
+  // (in derived classes), use the given 'tloc' argument as the index.
+  //
+  // If the database file name (fDBfileName) contains any slashes, it is
+  // assumed to be the actual file path.
+  //
+  // If opening fDBfileName fails, no slash is present in the name, and the
+  // name does not already have the format "db_*.dat", the routine will also
+  // try to open "db_<fDBfileName>.dat".
+  //
+  // If the file is still not found, but DB_DIR is defined in the environment,
+  // repeat the search in $DB_DIR.
 
+  TString fname(fDBfileName);
+
+  FILE* fi = fopen(fname,"r");
+  if( !fi ) {
+    TString dbfname;
+    Ssiz_t pos = fname.Index('/');
+    bool no_slash = (pos == kNPOS);
+    bool no_abspath = (pos != 0);
+    if( no_slash && !fname.BeginsWith("db_") && !fname.EndsWith(".dat") ) {
+      dbfname = "db_" + fname +".dat";
+      fi = fopen(dbfname,"r");
+    }
+    if( !fi && no_abspath ) {
+      const char* db_dir = gSystem->Getenv("DB_DIR");
+      if( db_dir ) {
+        long int path_max = pathconf(".", _PC_PATH_MAX);
+        if( path_max <= 0 )
+          path_max = 1024;
+        if( strlen(db_dir) <= static_cast<size_t>(path_max) ) {
+          TString dbdir(db_dir);
+          if( !dbdir.EndsWith("/") )
+            dbdir.Append('/');
+          fname.Prepend(dbdir);
+          fi = fopen(fname,"r");
+          if( !fi && !dbfname.IsNull() ) {
+            dbfname.Prepend(dbdir);
+            fi = fopen(dbfname,"r");
+          }
+          // if still !fi here, init(fi,...) below will report error
+        }
+      }
     }
   }
+  return init(fi, fname);
 }
 
-}
-
-
-void THaCrateMap::print() const
+void THaCrateMap::print(ostream& os) const
 {
   for( int roc=0; roc<MAXROC; roc++ ) {
     if( !crdat[roc].crate_used || crdat[roc].nslot ==0 ) continue;
-    cout << "==== Crate " << roc << " type " << crdat[roc].crate_type;
-    if( !crdat[roc].scalerloc.IsNull() )  cout << " \"" << crdat[roc].scalerloc << "\"";
-    cout << endl;
-    cout << "#slot\tmodel\tclear\t  header\t  mask  \tnchan\tndata\n";
+    os << "==== Crate " << roc << " type " << crdat[roc].crate_type;
+    if( !crdat[roc].scalerloc.IsNull() )  os << " \"" << crdat[roc].scalerloc << "\"";
+    os << endl;
+    os << "#slot\tmodel\tclear\t  header\t  mask  \tnchan\tndata\n";
     for( int slot=0; slot<MAXSLOT; slot++ ) {
       if( !crdat[roc].slot_used[slot] ) continue;
-      cout << "  " << slot << "\t" << crdat[roc].model[slot]
+      os << "  " << slot << "\t" << crdat[roc].model[slot]
 	   << "\t" << crdat[roc].slot_clear[slot];
       // using this instead of manipulators again for bckwards compat with g++-2
-      ios::fmtflags oldf = cout.setf(ios::right, ios::adjustfield);
-      cout << "\t0x" << hex << setfill('0') << setw(8) << crdat[roc].header[slot]
+      ios::fmtflags oldf = os.setf(ios::right, ios::adjustfield);
+      os << "\t0x" << hex << setfill('0') << setw(8) << crdat[roc].header[slot]
 	   << "\t0x" << hex << setfill('0') << setw(8) << crdat[roc].headmask[slot]
 	   << dec << setfill(' ') << setw(0)
 	   << "\t" << crdat[roc].nchan[slot]
 	   << "\t" << crdat[roc].ndata[slot]
 	   << endl;
-      cout.flags(oldf);
+      os.flags(oldf);
     }
   }
 }
@@ -281,6 +319,13 @@ int THaCrateMap::init(TString the_map)
   // initialize the crate-map according to the lines in the string 'the_map'
   // parse each line separately, to ensure that the format is correct
 
+  const char* const here = "THaCrateMap::init";
+
+  if ( the_map.IsNull() ) {
+    // Warn if we didn't get any data
+    ::Warning( here, "Empty crate map definition. Decoder will not be usable. "
+        "Check database." );
+  }
   // be certain the_map ends with a '\0' so we can make a stringstream from it
   the_map += '\0';
   istringstream s(the_map.Data());
@@ -315,7 +360,7 @@ int THaCrateMap::init(TString the_map)
     ssiz_t l = line.find_first_of("!#");    // drop comments
     if (l != string::npos ) line.erase(l);
 
-    if ( line.length() <= 0 ) continue;
+    if ( line.empty() ) continue;
 
     if ( line.find_first_not_of(" \t") == string::npos ) continue; // nothing useful
 
@@ -358,13 +403,12 @@ int THaCrateMap::init(TString the_map)
     //        slot#  model#  bank#
 
     // Default values:
-    int imodel, cword=1;
-    unsigned int mask=0, iheader=0, ichan=MAXCHAN, idata=MAXDATA;
-    int nread;
+    Int_t  cword=1, nread;
+    UInt_t imodel, mask=0, iheader=0, ichan=MAXCHAN, idata=MAXDATA;
     // must read at least the slot and model numbers
     if ( crate>=0 &&
 	 (nread=
-	  sscanf(line.c_str(),"%d %d %d %x %x %u %u",
+	  sscanf(line.c_str(),"%d %u %u %x %x %u %u",
 		 &slot,&imodel,&cword,&iheader,&mask,&ichan,&idata)) >=2 ) {
       if (nread>=6)
 	setModel(crate,slot,imodel,ichan,idata);

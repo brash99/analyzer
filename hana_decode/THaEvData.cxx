@@ -1,4 +1,4 @@
-/////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
 //
 //   THaEvData
 //   Hall A Event Data from One "Event"
@@ -32,11 +32,6 @@
 #include <iomanip>
 #include <ctime>
 
-#ifndef STANDALONE
-#include "THaVarList.h"
-#include "THaGlobals.h"
-#endif
-
 using namespace std;
 using namespace Decoder;
 
@@ -58,11 +53,12 @@ TString THaEvData::fgDefaultCrateMapName = "cratemap";
 
 THaEvData::THaEvData() :
   fMap(0), first_decode(true), fTrigSupPS(true),
-  fMultiBlockMode(kFALSE), fBlockIsDone(kFALSE),
-  buffer(0), fDebugFile(0), run_num(0), run_type(0), fRunTime(0),
-  evt_time(0), recent_event(0), 
-  buffmode(false), synchmiss(false), synchextra(false),
-  fNSlotUsed(0), fNSlotClear(0), 
+  fMultiBlockMode(false), fBlockIsDone(false), fDataVersion(0),
+  fEpicsEvtType(0), buffer(0), fDebugFile(0), event_type(0), event_length(0),
+  event_num(0), run_num(0), evscaler(0), bank_tag(0), data_type(0),
+  block_size(0), tbLen(0), run_type(0), fRunTime(0),
+  evt_time(0), recent_event(0), buffmode(false), synchmiss(false),
+  synchextra(false), fNSlotUsed(0), fNSlotClear(0),
   fDoBench(kFALSE), fBench(0), fNeedInit(true), fDebug(0), fExtra(0)
 {
   fInstance = fgInstances.FirstNullBit();
@@ -77,29 +73,6 @@ THaEvData::THaEvData() :
   memset(crateslot,0,MAXROC*MAXSLOT*sizeof(THaSlotData*));
   fRunTime = time(0); // default fRunTime is NOW
   fEpicsEvtType = Decoder::EPICS_EVTYPE;  // default for Hall A
-#ifndef STANDALONE
-// Register global variables.
-  if( gHaVars ) {
-    VarDef vars[] = {
-      { "runnum",    "Run number",     kInt,    0, &run_num },
-      { "runtype",   "CODA run type",  kInt,    0, &run_type },
-      { "runtime",   "CODA run time",  kULong,  0, &fRunTime },
-      { "evnum",     "Event number",   kInt,    0, &event_num },
-      { "evtyp",     "Event type",     kInt,    0, &event_type },
-      { "evlen",     "Event Length",   kInt,    0, &event_length },
-      { "evtime",    "Event time",     kULong,  0, &evt_time },
-      { 0 }
-    };
-    TString prefix("g");
-    // Prevent global variable clash if there are several instances of us
-    if( fInstance > 1 )
-      prefix.Append(Form("%d",fInstance));
-    prefix.Append(".");
-    gHaVars->DefineVariables( vars, prefix, "THaEvData::THaEvData" );
-  } else
-    Warning("THaEvData::THaEvData","No global variable list found. "
-	    "Variables not registered.");
-#endif
 }
 
 
@@ -109,15 +82,6 @@ THaEvData::~THaEvData() {
     fBench->Summary(a,b);
   }
   delete fBench;
-#ifndef STANDALONE
-  if( gHaVars ) {
-    TString prefix("g");
-    if( fInstance > 1 )
-      prefix.Append(Form("%d",fInstance));
-    prefix.Append(".*");
-    gHaVars->RemoveRegexp( prefix );
-  }
-#endif
   // We must delete every array element since not all may be in fSlotUsed.
   for( int i=0; i<MAXROC*MAXSLOT; i++ )
     delete crateslot[i];
@@ -198,15 +162,19 @@ void THaEvData::SetDebug( UInt_t level )
 
 void THaEvData::SetOrigPS(Int_t evtyp)
 {
-  fTrigSupPS = true;  // default after Nov 2003
-  if (evtyp == PRESCALE_EVTYPE) {
+  switch(evtyp) {
+  case TS_PRESCALE_EVTYPE: // default after Nov 2003
+    fTrigSupPS = true;
+    break;
+  case PRESCALE_EVTYPE:
     fTrigSupPS = false;
-    return;
-  } else if (evtyp != TS_PRESCALE_EVTYPE) {
-    cout << "SetOrigPS::Warn: PS factors";
-    cout << " originate only from evtype ";
-    cout << PRESCALE_EVTYPE << "  or ";
-    cout << TS_PRESCALE_EVTYPE << endl;
+    break;
+  default:
+    cerr << "SetOrigPS::Warn: PS factors";
+    cerr << " originate only from evtype ";
+    cerr << PRESCALE_EVTYPE << "  or ";
+    cerr << TS_PRESCALE_EVTYPE << endl;
+    break;
   }
 }
 
@@ -280,8 +248,19 @@ int THaEvData::init_cmap()  {
     delete fMap;
     fMap = new THaCrateMap( fCrateMapName );
   }
-  if( fDebug>0 ) cout << "Init crate map " << endl;
-  if( fMap->init(GetRunTime()) == THaCrateMap::CM_ERR )
+  if( fDebug>0 )
+    cout << "Initializing crate map " << endl;
+  FILE* fi; TString fname; Int_t ret;
+  if( init_cmap_openfile(fi,fname) != 0 ) {
+    // A derived class implements a special method to open the crate map
+    // database file. Call THaCrateMap's file-based init method.
+    ret = fMap->init(fi,fname);
+  } else {
+    // Use the default behavior of THaCrateMap for initializing the map
+    // (currently that means opening a database file named fCrateMapName)
+    ret = fMap->init(GetRunTime());
+  }
+  if( ret == THaCrateMap::CM_ERR )
     return HED_FATAL; // Can't continue w/o cratemap
   fNeedInit = false;
   return HED_OK;
@@ -374,6 +353,12 @@ Module* THaEvData::GetModule(Int_t roc, Int_t slot) const
   THaSlotData *sldat = crateslot[idx(roc,slot)];
   if (sldat) return sldat->GetModule();
   return NULL;
+}
+
+//_____________________________________________________________________________
+Int_t THaEvData::SetDataVersion( Int_t version )
+{
+  return (fDataVersion = version);
 }
 
 ClassImp(THaEvData)
