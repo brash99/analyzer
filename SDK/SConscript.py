@@ -1,22 +1,40 @@
 ###### Hall A SDK Main SConscript File #####
+###### Author:	Edward Brash (brash@jlab.org) May 2017
 
-### Modify 'libname' and the list of source files 'src' as needed
-
-from podd_util import build_library
+import os
+import re
+import SCons.Util
 Import ('baseenv')
 
-# Library name (lib<libname>.so will be built)
-libname = 'User'
+######## ROOT Dictionaries #########
 
-# Sources (each must have a corresponding .h header file)
-# This must be a space-separated string, not a Python list
-src = """
+rootuserdict = baseenv.subst('$MAIN_DIR')+'/SBSDict.C'
+rootuserobj = baseenv.subst('$MAIN_DIR')+'/SBSDict.so'
+userheaders = Split("""
+FbusDetector.h FbusApparatus.h
+HcalDetector.h HcalApparatus.h
+CdetDetector.h CdetApparatus.h
+SBS_LinkDef.h
+""")
+baseenv.RootCint(rootuserdict,userheaders)
+baseenv.SharedObject(target = rootuserobj, source = rootuserdict)
+
+#######  Start of main SConscript ###########
+
+list = Split("""
 FbusDetector.cxx FbusApparatus.cxx
 HcalDetector.cxx HcalApparatus.cxx
 CdetDetector.cxx CdetApparatus.cxx
-BBHodoDetector.cxx BBHodoApparatus.cxx
-"""
-# Tell SCons to build this library from these sources.
-# A ROOT dictionary, defined in <libname>_LinkDef.h, will be built as well.
-# For more info, see the documention in $ANALYZER/site_scons/podd_util.py
-build_library(baseenv, libname, src)
+""")
+
+sotarget = 'SBS'
+srclib = baseenv.SharedLibrary(target = sotarget, source = list+['SBSDict.so'],SHLIBPREFIX='lib',LIBS=[''])
+print ('Source shared library = %s\n' % srclib)
+
+linkbase = baseenv.subst('$SHLIBPREFIX')+sotarget
+
+cleantarget = linkbase+'.so'
+
+print ('cleantarget = %s\n' % cleantarget)
+
+Clean(srclib,cleantarget)

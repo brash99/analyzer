@@ -1,4 +1,4 @@
 {
   cout << "Running rootlogon.C" << endl;
-  gSystem->Load("../SDK/libUser.dylib");
+  gSystem->Load("../SDK/libSBS.so");
 }
