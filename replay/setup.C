@@ -20,17 +20,20 @@ int setup()
   //gHaApps->Add( HadArm );
   
   THaApparatus* Cdet = new CdetApparatus("C","Cdet Detector");
+  THaApparatus* BBHodo = new BBHodoApparatus("B","BBHodo Detector");
   gHaApps->Add( Cdet );
+  gHaApps->Add( BBHodo );
   
-  int run_number = 1089;
-  TString experiment = "scint";
+  int run_number = 91;
+  TString experiment = "bbhodo";
 
   // Get the run number
   cout << "Run number (hint: 1089, 1090, ...)? ";
   cin >> run_number;
   
   // Check if the input file exists
-  TString data_dir = gSystem->Getenv("DATA_DIR");
+  TString data_dir;
+  //TString data_dir = gSystem->Getenv("DATA_DIR");
   if( data_dir.IsNull() )
     data_dir = "../../data";
   TString run_file = data_dir + "/" + experiment + Form("_%d.dat",run_number);
@@ -39,7 +42,7 @@ int setup()
   	return 1;
   }
   
-  THaRun* run = new THaRun( run_file, "CDet Cosmics Data" );
+  THaRun* run = new THaRun( run_file, "BBHodo Cosmics Data" );
   run->SetDataRequired( THaRunBase::kDate );
 
   int nev = -1;
@@ -52,7 +55,8 @@ int setup()
   
   THaAnalyzer* analyzer = new THaAnalyzer; 
 
-  TString out_dir = gSystem->Getenv("OUT_DIR");
+  TString out_dir;
+  //out_dir = gSystem->Getenv("OUT_DIR");
   if( out_dir.IsNull() )
     out_dir = "./rootfiles";
   TString out_file = out_dir + "/" + experiment + Form("_%d.root", run_number);

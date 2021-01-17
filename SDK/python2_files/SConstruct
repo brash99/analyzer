@@ -45,7 +45,7 @@ if halla_dir is None:
 
 baseenv.Append(MAIN_DIR = Dir('.').abspath)
 baseenv.Append(HA_DIR = halla_dir)
-baseenv.Append(HA_SRC = baseenv.subst('$HA_DIR')+'/src ') 
+baseenv.Append(HA_SRC = baseenv.subst('$HA_DIR')+'/Podd ') 
 baseenv.Append(HA_DC = baseenv.subst('$HA_DIR')+'/hana_decode ') 
 
 print "Hall A Analyzer main directory = %s" % halla_dir

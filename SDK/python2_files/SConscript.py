@@ -14,6 +14,7 @@ userheaders = Split("""
 FbusDetector.h FbusApparatus.h
 HcalDetector.h HcalApparatus.h
 CdetDetector.h CdetApparatus.h
+BBHodoDetector.h BBHodoApparatus.h
 SBS_LinkDef.h
 """)
 baseenv.RootCint(rootuserdict,userheaders)
@@ -25,6 +26,7 @@ list = Split("""
 FbusDetector.cxx FbusApparatus.cxx
 HcalDetector.cxx HcalApparatus.cxx
 CdetDetector.cxx CdetApparatus.cxx
+BBHodoDetector.cxx BBHodoApparatus.cxx
 """)
 
 sotarget = 'SBS'
