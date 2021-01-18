@@ -19,7 +19,7 @@ BBHodoApparatus::BBHodoApparatus( const char* name, const char* description ) :
   THaApparatus(name,description)
 {
 
-  AddDetector( new BBHodoDetector("hcal", "Hcal Detector 1"));
+  AddDetector( new BBHodoDetector("bbhodo", "BigBite Hodoscope Detector"));
 
 }
 

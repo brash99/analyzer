@@ -21,13 +21,13 @@ endif
 setenv ANALYZER $MYDIR
 setenv REPLAY $ANALYZER/replay
 setenv DB_DIR $ANALYZER/DB
-setenv DATA_DIR $ANALYZER/../cdet/data
+setenv DATA_DIR $ANALYZER/../data
 setenv OUT_DIR $REPLAY/rootfiles
 
 # Check if LD_LIBRARY_PATH is defined
-if ( ! ($?LD_LIBRARY_PATH) ) then
+#if ( ! ($?LD_LIBRARY_PATH) ) then
    setenv LD_LIBRARY_PATH ""
-endif
+#endif
 # Check if DYLD_LIBRARY_PATH is defined
 if ( ! ($?DYLD_LIBRARY_PATH) ) then
    setenv DYLD_LIBRARY_PATH ""

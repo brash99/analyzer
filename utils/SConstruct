@@ -16,7 +16,7 @@ configure.FindEVIO(env, build_it = False)
 
 flags = { 'LIBS'    : Split('HallA dc evio'),
           'LIBPATH' : [analyzer_dir,env.subst('$EVIO_LIB')],
-          'CPPPATH' : Split('-I'+analyzer_dir+'/src -I'+analyzer_dir+'/hana_decode') }
+          'CPPPATH' : Split('-I'+analyzer_dir+'/Podd -I'+analyzer_dir+'/hana_decode') }
 env.MergeFlags(flags)
 
 # Configure

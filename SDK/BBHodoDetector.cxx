@@ -304,7 +304,7 @@ Int_t BBHodoDetector::Decode( const THaEvData& evdata )
 
     }
 
-    if (ldebug) cout << "hcal num chan "<<d->crate<<"   "<<d->slot<<"   "<<evdata.GetNumChan( d->crate, d->slot )<<endl;
+    if (ldebug) cout << "bbhodo num chan "<<d->crate<<"   "<<d->slot<<"   "<<evdata.GetNumChan( d->crate, d->slot )<<endl;
 
 
     // Loop over all channels that have a hit.

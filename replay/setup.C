@@ -4,7 +4,8 @@
 #include "THaAnalyzer.h"
 #include "THaGlobals.h"
 
-#include "../SDK/CdetApparatus.h"
+//#include "../SDK/CdetApparatus.h"
+#include "../SDK/BBHodoApparatus.h"
 
 int setup()
 {
@@ -18,10 +19,10 @@ int setup()
 
   //THaApparatus* HadArm = new HcalApparatus("H","SBS Hadron Arm HCAL");
   //gHaApps->Add( HadArm );
-  
-  THaApparatus* Cdet = new CdetApparatus("C","Cdet Detector");
+ 
+  //THaApparatus* Cdet = new CdetApparatus("C","Cdet Detector");
+  //gHaApps->Add( Cdet );
   THaApparatus* BBHodo = new BBHodoApparatus("B","BBHodo Detector");
-  gHaApps->Add( Cdet );
   gHaApps->Add( BBHodo );
   
   int run_number = 91;

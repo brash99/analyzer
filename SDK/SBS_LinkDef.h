@@ -10,5 +10,7 @@
 #pragma link C++ class FbusApparatus+;
 #pragma link C++ class CdetDetector+;
 #pragma link C++ class CdetApparatus+;
+#pragma link C++ class BBHodoDetector+;
+#pragma link C++ class BBHodoApparatus+;
 
 #endif
