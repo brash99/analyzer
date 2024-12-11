@@ -9,7 +9,6 @@
 #include "THaEvData.h"
 #include "VarDef.h"
 #include <iostream>
-#include <cstring>
 
 using namespace std;
 
@@ -35,7 +34,7 @@ THaHelicity::~THaHelicity()
 {
   // Destructor
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //____________________________________________________________________
@@ -43,10 +42,10 @@ Int_t THaHelicity::DefineVariables( EMode mode )
 {
   // Initialize global variables
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-
   // Define standard variables from base class
-  THaADCHelicity::DefineVariables( mode );
+  Int_t ret = THaADCHelicity::DefineVariables( mode );
+  if( ret )
+    return ret;
 
   // Define variables for the G0 in-time mode
   const RVarDef var[] = {
@@ -59,7 +58,7 @@ Int_t THaHelicity::DefineVariables( EMode mode )
     { "goodhel",   "ADC and G0 helicities agree",  "fGoodHel" },
     { "goodhel2",  "ADC and G0 helicities agree unless one unknown", 
                                                   "fGoodHel2" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( var, mode );
 }
@@ -85,8 +84,8 @@ Int_t THaHelicity::ReadDatabase( const TDatime& date )
   if( !file ) return kFileError;
 
   DBRequest req[] = {
-    { "verbose",       &fDebug,      kInt, 0, 1, -2 },
-    { 0 }
+    { "verbose",       &fDebug,      kInt, 0, true, -2 },
+    { nullptr }
   };
   st = LoadDB( file, date, req );
   fclose(file);

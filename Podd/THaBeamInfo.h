@@ -8,23 +8,23 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "TVector3.h"
+#include "DataType.h"
+
 class THaBeam;
 
 class THaBeamInfo {
 public:
   THaBeamInfo() : fPosition(kBig,kBig,kBig), fPvect(kBig,kBig,kBig), fPol(0.0),
-		  fOK(0), fBeam(0) {}
+		  fOK(0), fBeam(nullptr) {}
   THaBeamInfo( const TVector3& pvect, const TVector3& position, 
 	       Double_t pol = 0.0 ) 
-    : fPosition(position), fPvect(pvect), fPol(pol), fOK(1), fBeam(0) {}
+    : fPosition(position), fPvect(pvect), fPol(pol), fOK(1), fBeam(nullptr) {}
   THaBeamInfo( Double_t p, const TVector3& vect, const TVector3& position, 
 	       Double_t pol = 0.0 ) 
-    : fPosition(position), fPvect(vect), fPol(pol), fOK(1), fBeam(0)
+    : fPosition(position), fPvect(vect), fPol(pol), fOK(1), fBeam(nullptr)
   { SetP(p); }
 
-  THaBeamInfo( const THaBeamInfo& t ) :
-    fPosition(t.fPosition), fPvect(t.fPvect), fPol(t.fPol), fOK(t.fOK),
-    fBeam(t.fBeam) {}
+  THaBeamInfo( const THaBeamInfo& t ) = default;
   THaBeamInfo& operator=( const THaBeamInfo& rhs ) {
     if( this != &rhs ) {
       fPosition = rhs.fPosition;
@@ -35,7 +35,7 @@ public:
     }
     return *this;
   }
-  virtual ~THaBeamInfo() {}
+  virtual ~THaBeamInfo() = default;
 
   void      Clear( Option_t* opt="" );
   Bool_t    IsOK()     const { return fOK; }
@@ -77,9 +77,6 @@ protected:
   Int_t     fOK;        // Data ok (0:no 1:yes)
 
   THaBeam*  fBeam;      //! Beam apparatus for this beam information
-
-private:
-  static const Double_t kBig;
 
   ClassDef(THaBeamInfo,1)  // Beam information for physics modules
 };

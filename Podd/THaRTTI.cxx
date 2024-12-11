@@ -59,7 +59,7 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
 
   // Variable names in TRealData are stored along with pointer prefixes (*)
   // and array subscripts, so we have to use a customized search function:
-  TRealData* rd = static_cast<TRealData*>( FindRealDataVar( lrd, avar ) );
+  auto* rd = dynamic_cast<TRealData*>( FindRealDataVar(lrd, avar ) );
   if( !rd )
     return -1;
 
@@ -69,15 +69,16 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
     return -1;
 
   VarType type;
-  TClass* elemClass = 0;
+  TClass* elemClass = nullptr;
   if( m->IsBasic() || m->IsEnum() ) {
     TString typnam( m->GetTypeName() );
-    if( typnam == "Double_t" || typnam == "double" )
+    if( m->IsEnum() || typnam == "Int_t" || typnam == "int" )
+      // Enumeration types are all treated as integers
+      type = kInt;
+    else if( typnam == "Double_t" || typnam == "double" )
       type = kDouble;
     else if( typnam == "Float_t" || typnam == "float" || typnam == "Real_t" )
       type = kFloat;
-    else if( typnam == "Int_t" || typnam == "int" )
-      type = kInt;
     else if( typnam == "UInt_t" || typnam == "unsigned int" )
       type = kUInt;
     else if( typnam == "Short_t" || typnam == "short" )
@@ -93,9 +94,6 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
     else if( typnam == "Byte_t" || typnam == "UChar_t" ||
 	     typnam == "Bool_t" || typnam == "bool" || typnam == "unsigned char" )
       type = kByte;
-    else if( m->IsEnum() )
-      // Enumeration types are all treated as integers
-      type = kInt;
     else
       return -1;
     // Pointers are flagged as pointer types. The way THaVar works, this means:
@@ -150,7 +148,7 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
   // Check for arrays
   Int_t        array_dim    = m->GetArrayDim();
   const char*  array_index  = m->GetArrayIndex();
-  Int_t        count_offset = -1;
+  Long_t       count_offset = -1;
 
   TString subscript( rd->GetName() );
   EArrayType atype = kScalar;
@@ -164,9 +162,6 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
   if( array_dim > 0 ) {
     // Explicitly dimensioned arrays must not be pointers
     if( m->IsaPointer() )
-      return -1;
-    // Must be an array of a basic type
-    if( !m->GetDataType() )
       return -1;
     if( avar.IsArray() ) {
       // If a specific element was requested, treat the variable as a scalar.
@@ -227,7 +222,7 @@ Int_t THaRTTI::Find( TClass* cl, const TString& var,
   switch( atype ) {
   case kScalar:
     if( element_requested >= 0 )
-      fOffset += element_requested * m->GetDataType()->Size();
+      fOffset += element_requested * m->GetUnitSize();
     break;
   case kFixed:
     fSubscript = subscript;
@@ -263,7 +258,7 @@ TObject* FindRealDataVar( TList* lrd, const TString& var )
       return obj;
     lnk = lnk->Next();
   }
-  return 0;
+  return nullptr;
 }
 
 //_____________________________________________________________________________
@@ -276,13 +271,13 @@ TClass* THaRTTI::GetClass() const
   if( IsObjVector() )
     return fElemClass;
 
-  return NULL;
+  return nullptr;
 }
 
 //_____________________________________________________________________________
 Bool_t THaRTTI::IsPointer() const
 {
-  return fDataMember ? fDataMember->IsaPointer() : kFALSE;
+  return fDataMember != nullptr && fDataMember->IsaPointer();
 }
 
 //_____________________________________________________________________________
@@ -298,7 +293,7 @@ void THaRTTI::Print( Option_t* ) const
     return;
   cout << "Type:         ";
   if( !IsObject() && !(fType == kObjectV || fType == kObjectPV) )
-    cout << THaVar::GetTypeName( fType );
+    cout << Vars::GetTypeName( fType );
   else if( fDataMember )
     cout << fDataMember->GetFullTypeName();
   cout << endl;

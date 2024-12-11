@@ -18,7 +18,7 @@ class THaG0HelicityReader {
   
 public:
   THaG0HelicityReader();
-  virtual ~THaG0HelicityReader();
+  virtual ~THaG0HelicityReader() = default;
   
   Bool_t GetValidTime() const { return fValidTime; }
 
@@ -31,10 +31,13 @@ protected:
 
   // Used by ReadDatabase
   enum EROC { kHel = 0, kTime, kROC2, kROC3 };
-  struct ROCinfo {
-    Int_t  roc;               // ROC to read out
-    Int_t  header;            // Headers to search for (0 = ignore)
-    Int_t  index;             // Index into buffer
+  class ROCinfo {
+  public:
+    ROCinfo() : roc(kMaxUInt), header(0), index(0) {}
+    Bool_t  valid() const;
+    UInt_t  roc;              // ROC to read out
+    UInt_t  header;           // Headers to search for (0 = ignore)
+    UInt_t  index;            // Index into buffer
   };
 
   virtual void  Clear( Option_t* opt="" );
@@ -42,9 +45,9 @@ protected:
   Int_t         ReadDatabase( const char* dbfilename, const char* prefix,
 			      const TDatime& date, int debug_flag = 0 );
 
-  Bool_t   fPresentReading;   // Current helicity reading
-  Bool_t   fQrt;              // Current QRT
-  Bool_t   fGate;             // Current gate
+  Int_t   fPresentReading;    // Current helicity reading
+  Int_t   fQrt;               // Current QRT
+  Int_t   fGate;              // Current gate
 
   Double_t fTimestamp;        // Event time from 105 kHz clock
   Double_t fOldT1;            // Last event's timestamps
@@ -64,7 +67,7 @@ protected:
 
 private:
 
-  static Int_t FindWord( const THaEvData& evdata, const ROCinfo& info );
+  static UInt_t FindWord( const THaEvData& evdata, const ROCinfo& info );
 
   ClassDef(THaG0HelicityReader,2) // Helper class for reading G0 helicity data
 

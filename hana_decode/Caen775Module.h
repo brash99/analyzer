@@ -16,27 +16,25 @@ class Caen775Module : public VmeModule {
 
 public:
 
-   Caen775Module() : fNumHits(0) {}
-   Caen775Module(Int_t crate, Int_t slot);
-   virtual ~Caen775Module();
+   Caen775Module() = default;
+   Caen775Module( UInt_t crate, UInt_t slot );
+   virtual ~Caen775Module() = default;
 
-   using Module::GetData;
-   using Module::LoadSlot;
+   using VmeModule::GetData;
+   using VmeModule::Init;
 
-   virtual UInt_t GetData(Int_t chan) const;
-   virtual void Init();
-   virtual void Clear(Option_t *opt="");
-   virtual Int_t Decode(const UInt_t*) { return 0; }
-   virtual Int_t LoadSlot(THaSlotData *sldat,  const UInt_t *evbuffer, const UInt_t *pstop );
-   virtual Int_t LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, Int_t pos, Int_t len);
+   virtual UInt_t GetData( UInt_t chan) const;
+   virtual void   Init();
+   virtual void   Clear(Option_t *opt="");
+   virtual Int_t  Decode(const UInt_t*) { return 0; }
+   virtual UInt_t LoadSlot( THaSlotData *sldat, const UInt_t *evbuffer, const UInt_t *pstop );
+   virtual UInt_t LoadSlot( THaSlotData *sldat, const UInt_t* evbuffer, UInt_t pos, UInt_t len );
    virtual const char* MyModType() {return "tdc";}
    virtual const char* MyModName() {return "775";}
  
 private:
 
    static const size_t NTDCCHAN = 32;
-
-   Int_t *fNumHits;
 
    static TypeIter_t fgThisType;
    ClassDef(Caen775Module,0)  //  Caen775 of a module; make your replacements

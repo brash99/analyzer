@@ -9,6 +9,7 @@
 
 #include "TObject.h"
 #include "THaVDCCluster.h"   // for chi2_t
+#include "DataType.h"        // for kBig
 
 class THaVDCPoint;
 class THaTrack;
@@ -17,9 +18,10 @@ class THaVDCPointPair : public TObject {
 
 public:
   THaVDCPointPair( THaVDCPoint* lp, THaVDCPoint* up, Double_t spacing )
-    : fLowerPoint(lp), fUpperPoint(up), fSpacing(spacing), fError(1e38),
+    : fLowerPoint(lp), fUpperPoint(up), fSpacing(spacing), fError(kBig),
       fStatus(0) {}
-  virtual ~THaVDCPointPair() {}
+  THaVDCPointPair() = delete;
+  virtual ~THaVDCPointPair() = default;
 
   void            Analyze();
   void            Associate( THaTrack* track );
@@ -32,9 +34,9 @@ public:
   Int_t           GetStatus()  const { return fStatus; }
   THaTrack*       GetTrack()   const;
   Bool_t          HasUsedCluster() const;
-  virtual Bool_t  IsSortable() const { return kTRUE; }
+  virtual Bool_t  IsSortable() const { return true; }
   virtual void    Print( Option_t* opt="" ) const;
-  void            Release();
+//  void            Release();
   void            SetStatus( Int_t i ) { fStatus = i; }
   void            Use();
 
@@ -53,9 +55,6 @@ protected:
   Double_t        fSpacing;     // Spacing between lower and upper chambers [m]
   Double_t        fError;       // Goodness of match between the points
   Int_t           fStatus;      // Status flag
-
-private:
-  THaVDCPointPair();
 
   ClassDef(THaVDCPointPair,0)     // Pair of lower/upper VDC points
 };

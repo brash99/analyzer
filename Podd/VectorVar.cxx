@@ -13,6 +13,7 @@
 #include "TError.h"
 #include <vector>
 #include <cassert>
+#include <stdexcept>
 
 #define kInvalid     THaVar::kInvalid
 #define kInvalidInt  THaVar::kInvalidInt
@@ -28,7 +29,7 @@ VectorVar::VectorVar( THaVar* pvar, const void* addr, VarType type )
   // Constructor
 
   if( !VerifyNonArrayName(GetName()) ) {
-    fValueP = 0;
+    fValueP = nullptr;
     return;
   }
 }
@@ -41,29 +42,36 @@ Int_t VectorVar::GetLen() const
   assert( fValueP && IsVector() );
 
   // To be safe, cast the pointer to the exact type of vector
+  vector<int>::size_type siz = kInvalidInt;
   switch( fType ) {
   case kIntV: {
     const vector<int>& vec = *static_cast< const vector<int>* >(fValueP);
-    return vec.size();
+    siz = vec.size();
+    break;
   }
   case kUIntV: {
-    const vector<unsigned int>& vec =	*static_cast< const vector<unsigned int>* >(fValueP);
-    return vec.size();
+    const vector<unsigned int>& vec = *static_cast< const vector<unsigned int>* >(fValueP);
+    siz = vec.size();
+    break;
   }
   case kFloatV: {
     const vector<float>& vec = *static_cast< const vector<float>* >(fValueP);
-    return vec.size();
+    siz = vec.size();
+    break;
   }
   case kDoubleV: {
     const vector<double>& vec = *static_cast< const vector<double>* >(fValueP);
-    return vec.size();
+    siz = vec.size();
+    break;
   }
   //TODO: support matrix types
   default:
-    assert(false); // should never happen, object misconstructed
+    assert(false); // should never happen, object ill-constructed
     break;
   }
-  return kInvalidInt;
+  if( siz > kMaxInt )
+    throw overflow_error("Podd::VectorVar array size overflow");
+  return static_cast<Int_t>(siz);
 }
 
 //_____________________________________________________________________________
@@ -94,11 +102,11 @@ const void* VectorVar::GetDataPointer( Int_t i ) const
   assert( fValueP && IsVector() );
 
   if( GetLen() == 0 )
-    return 0;
+    return nullptr;
 
   if( i<0 || i>=GetLen() ) {
     fSelf->Error(here, "Index out of range, variable %s, index %d", GetName(), i );
-    return 0;
+    return nullptr;
   }
 
   switch( fType ) {
@@ -120,10 +128,10 @@ const void* VectorVar::GetDataPointer( Int_t i ) const
   }
   //TODO: support matrix types?
   default:
-    return 0;
+    break;
   }
 
-  return 0;
+  return nullptr;
 }
 
 //_____________________________________________________________________________
@@ -133,7 +141,7 @@ Bool_t VectorVar::HasSameSize( const Variable& ) const
   // As currently implemented, std::vector variables are always different
   // since their sizes are in principle independent
 
-  return kFALSE;
+  return false;
 }
 
 //_____________________________________________________________________________
@@ -141,7 +149,7 @@ Bool_t VectorVar::IsBasic() const
 {
   // Data are basic (POD variable or array)
 
-  return kFALSE;
+  return false;
 }
 
 //_____________________________________________________________________________
@@ -149,7 +157,7 @@ Bool_t VectorVar::IsContiguous() const
 {
   // Data are contiguous in memory
 
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________
@@ -158,7 +166,7 @@ Bool_t VectorVar::IsPointerArray() const
   // Data are an array of pointers to data
 
   //TODO: support matrix types
-  return kFALSE;
+  return false;
 }
 
 //_____________________________________________________________________________
@@ -166,7 +174,7 @@ Bool_t VectorVar::IsStreamable() const
 {
   // Variable refers to an object that can be streamed via ROOT I/O
 
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________
@@ -174,7 +182,7 @@ Bool_t VectorVar::IsVarArray() const
 {
   // Variable is a variable-size array
 
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________

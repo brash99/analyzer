@@ -127,12 +127,12 @@ foreach(_lib IN LISTS ROOT_LIB_FLAGS ROOT_FIND_COMPONENTS)
     if(ROOT_${_lib}_LIBRARY)
       add_library(ROOT::${_lib} SHARED IMPORTED)
       set_target_properties(ROOT::${_lib} PROPERTIES
-	INTERFACE_INCLUDE_DIRECTORIES "${ROOT_INCLUDE_DIR}"
-	IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
-	IMPORTED_LOCATION "${ROOT_${_lib}_LIBRARY}"
-	INTERFACE_COMPILE_OPTIONS
-	  "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CXX>>:${ROOT_CXXFLAG_LIST}>"
-	)
+        INTERFACE_INCLUDE_DIRECTORIES "${ROOT_INCLUDE_DIR}"
+        IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
+        IMPORTED_LOCATION "${ROOT_${_lib}_LIBRARY}"
+        INTERFACE_COMPILE_OPTIONS
+        "$<$<BUILD_INTERFACE:$<COMPILE_LANGUAGE:CXX>>:${ROOT_CXXFLAG_LIST}>"
+        )
       list(APPEND ROOT_LIBRARIES ${ROOT_${_lib}_LIBRARY})
       list(REMOVE_ITEM ROOT_FIND_COMPONENTS ${_lib})
       list(APPEND targetlist ROOT::${_lib})
@@ -212,14 +212,14 @@ function(build_root_dictionary dictionary)
     if(NOT ${ROOT_VERSION} VERSION_LESS 6)
       find_program(ROOTCLING rootcling HINTS "${ROOTSYS}/bin")
       if(NOT ROOTCLING)
-	message(FATAL_ERROR
-	  "root_generate_dictionary: Cannot find rootcling. Check ROOT installation.")
+        message(FATAL_ERROR
+          "root_generate_dictionary: Cannot find rootcling. Check ROOT installation.")
       endif()
     else()
       find_program(ROOTCINT rootcint HINTS "${ROOTSYS}/bin")
       if(NOT ROOTCINT)
-	message(FATAL_ERROR
-	  "root_generate_dictionary: Cannot find rootcint. Check ROOT installation.")
+        message(FATAL_ERROR
+          "root_generate_dictionary: Cannot find rootcint. Check ROOT installation.")
       endif()
     endif()
   else()
@@ -250,39 +250,45 @@ function(build_root_dictionary dictionary)
     else()
       set(pcmname ${dictionary})
     endif()
+    set(libroot lib${pcmname})
     add_custom_command(
-      OUTPUT ${dictionary}Dict.cxx lib${pcmname}_rdict.pcm
+      OUTPUT ${dictionary}Dict.cxx ${libroot}_rdict.pcm ${libroot}.rootmap
       COMMAND ${MK_ROOTDICT}
       ARGS
-	${ROOTCLING}
-	-f ${dictionary}Dict.cxx
-	-s lib${pcmname}
-	${RGD_OPTIONS}
-	INCDIRS "${incdirs}"
-	DEFINES "${defines}"
-	${RGD_UNPARSED_ARGUMENTS}
-	${RGD_LINKDEF}
-	VERBATIM
-	DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
-      )
-    set(PCM_FILE ${CMAKE_CURRENT_BINARY_DIR}/lib${pcmname}_rdict.pcm)
-    install(FILES ${PCM_FILE} DESTINATION ${CMAKE_INSTALL_LIBDIR})
+        ${ROOTCLING}
+        -f ${dictionary}Dict.cxx
+        -s ${libroot}
+        -rmf ${libroot}.rootmap
+        -rml ${libroot}${CMAKE_SHARED_LIBRARY_SUFFIX}
+        ${RGD_OPTIONS}
+        INCDIRS "${incdirs}"
+        DEFINES "${defines}"
+        ${RGD_UNPARSED_ARGUMENTS}
+        ${RGD_LINKDEF}
+      VERBATIM
+      DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
+    )
+    install(FILES
+      ${CMAKE_CURRENT_BINARY_DIR}/${libroot}_rdict.pcm
+      ${CMAKE_CURRENT_BINARY_DIR}/${libroot}.rootmap
+      DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    )
   else()
     # ROOT5
     add_custom_command(
       OUTPUT ${dictionary}Dict.cxx
       COMMAND ${MK_ROOTDICT}
       ARGS
-	${ROOTCINT}
-	-f ${dictionary}Dict.cxx
-	-c ${RGD_OPTIONS}
-	INCDIRS "${incdirs}"
-	DEFINES "${defines}"
-	${RGD_UNPARSED_ARGUMENTS}
-	${RGD_LINKDEF}
-	VERBATIM
-	DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
-      )
+        ${ROOTCINT}
+        -v2 -f ${dictionary}Dict.cxx
+        -c ${RGD_OPTIONS}
+        INCDIRS "${incdirs}"
+        DEFINES "${defines}"
+        ${RGD_UNPARSED_ARGUMENTS}
+        ${RGD_LINKDEF}
+      VERBATIM
+      DEPENDS ${RGD_UNPARSED_ARGUMENTS} ${RGD_LINKDEF}
+    )
   endif()
   add_custom_target(${dictionary}_ROOTDICT
     DEPENDS ${dictionary}Dict.cxx

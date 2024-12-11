@@ -7,7 +7,7 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include "Rtypes.h"
+#include "TObject.h"
 #include <vector>
 #include <map>
 #include <string> 
@@ -26,8 +26,8 @@ class THaOdata {
 // Utility class used by THaOutput to store arrays 
 // up to size 'nsize' for tree output.
 public:
-  THaOdata(int n=1) : tree(NULL), ndata(0), nsize(n)
-  { data = new Double_t[n]; }
+  explicit THaOdata(int n=1) :
+    tree{nullptr}, ndata{0}, nsize{n}, data{new Double_t[n]} {}
   THaOdata(const THaOdata& other);
   THaOdata& operator=(const THaOdata& rhs);
   virtual ~THaOdata() { delete [] data; };
@@ -47,7 +47,7 @@ public:
     return 1;
   }
   Int_t Fill(Double_t dat) { return Fill(0, dat); };
-  Double_t Get(Int_t index=0) {
+  Double_t Get(Int_t index=0) const {
     if( index<0 || index>=ndata ) return 0;
     return data[index];
   }
@@ -78,7 +78,7 @@ public:
   virtual Int_t Process();
   virtual Int_t ProcEpics(THaEvData *ev, THaEpicsEvtHandler *han);
   virtual Int_t End();
-  virtual Bool_t TreeDefined() const { return fTree != 0; };
+  virtual Bool_t TreeDefined() const { return fTree != nullptr; };
   virtual TTree* GetTree() const { return fTree; };
 
   static void SetVerbosity( Int_t level );
@@ -93,12 +93,12 @@ protected:
   virtual Int_t BuildBlock(const std::string& blockn);
   virtual std::string StripBracket(const std::string& var) const; 
   std::string svPrefix(std::string& histype);
-  std::vector<std::string> reQuote(const std::vector<std::string>& input) const;
-  std::string CleanEpicsName(const std::string& var) const;
+  static std::vector<std::string> reQuote(const std::vector<std::string>& input);
+  static std::string CleanEpicsName(const std::string& var);
   void BuildList(const std::vector<std::string>& vdata);
   void Print() const;
   // Variables, Formulas, Cuts, Histograms
-  Int_t fNvar;
+  UInt_t fNvar;
   Double_t *fVar, *fEpicsVar;
   std::vector<std::string> fVarnames, 
                            fFormnames, fFormdef,
@@ -117,8 +117,17 @@ protected:
   static const Int_t kNbout = 4000;
   static const Int_t fgNocut = -1;
 
-  static Int_t fgVerbose;
+  static Int_t fgVerbose;  // FIXME: -> member variable
   TObject*  fExtra;     // Additional member data (for binary compat.)
+
+  // Data put into fExtra
+  class OutputExtras : public TObject {
+  public:
+    OutputExtras() : fEpicsTimestamp(-1), fEpicsEvtNum(0) {}
+    virtual ~OutputExtras() = default;
+    time_t   fEpicsTimestamp;  // Timestamp of entry in EPICS tree
+    Long64_t fEpicsEvtNum;     // Most recent physics event before entry in EPICS tree
+  };
 
 private:
 

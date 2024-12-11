@@ -25,7 +25,7 @@ THaPhotoReaction::THaPhotoReaction( const char* name, const char* description,
 //				    Double target_mass )
   : THaPhysicsModule(name,description),
     fEGamma(kBig), fScatAngle(kBig), fScatAngleCM(kBig), fMA(target_mass),
-    fSpectroName(spectro), fSpectro(0), fBeam(0)
+    fSpectroName(spectro), fSpectro(nullptr), fBeam(nullptr)
 {
   // Standard constructor. Assume an ideal beam along z_lab.
 }
@@ -36,7 +36,7 @@ THaPhotoReaction::THaPhotoReaction( const char* name, const char* description,
 //				    Double_t target_mass ) 
   : THaPhysicsModule(name,description),
     fEGamma(kBig), fScatAngle(kBig), fScatAngleCM(kBig), fMA(target_mass),
-    fSpectroName(spectro), fBeamName(beam), fSpectro(0), fBeam(0)
+    fSpectroName(spectro), fBeamName(beam), fSpectro(nullptr), fBeam(nullptr)
 {
   // Constructor with specification of optional beam module.
 }
@@ -64,14 +64,11 @@ Int_t THaPhotoReaction::DefineVariables( EMode mode )
 {
   // Define/delete global variables.
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
-
   RVarDef vars[] = {
     { "EGamma",   "Real Brem. Photon Energy (GeV)", "fEGamma"},
     { "angle",    "Scattering Angle (rad)",         "fScatAngle"},
     { "angle_cm", "Scattering Angle(rad) in CM",    "fScatAngleCM"},
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( vars, mode );
 }

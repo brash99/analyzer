@@ -10,6 +10,7 @@
 #include "THaVarList.h"
 #include "THaGlobals.h"
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -22,15 +23,17 @@ const char* const MC_PREFIX = "MC.";
 Double_t MCTrackPoint::fgWindowSize = 1e-3;
 
 //_____________________________________________________________________________
-SimDecoder::SimDecoder()
-  : fWeight(1.0), fMCHits(0), fMCTracks(0), fIsSetup(false)
+SimDecoder::SimDecoder() :
+  fWeight{1.0},
+  fMCHits{nullptr},
+  fMCTracks{nullptr},
+  fMCPoints{new TClonesArray("Podd::MCTrackPoint", 50)},
+  fIsSetup{false}
 {
   // Constructor. Derived classes must allocate the track and hit
   // TClonesArrays using their respective hit and track classes
 
   const char* const here = "SimDecoder::SimDecoder";
-
-  fMCPoints = new TClonesArray( "Podd::MCTrackPoint", 50 );
 
   // Register standard global variables for event header data
   // (It is up to the actual implementation of SimDecoder to fill these)
@@ -43,7 +46,7 @@ SimDecoder::SimDecoder()
         { "evtyp",     "Event type",     kInt,    0, &event_type },
         { "evlen",     "Event Length",   kInt,    0, &event_length },
         { "evtime",    "Event time",     kULong,  0, &evt_time },
-        { 0 }
+        { nullptr }
     };
     TString prefix("g");
     // Prevent global variable clash if there are several instances of us
@@ -62,9 +65,9 @@ SimDecoder::~SimDecoder()
   // delete them and set the pointers to zero (using SafeDelete, for example),
   // else we may double-delete.
 
-  SafeDelete(fMCPoints);
-  SafeDelete(fMCTracks);
-  SafeDelete(fMCHits);
+  SafeDelete(fMCPoints)
+  SafeDelete(fMCTracks)
+  SafeDelete(fMCHits)
 
   // Unregister global variables registered in the constructor
   if( gHaVars ) {
@@ -171,50 +174,34 @@ Int_t SimDecoder::DefineVariables( THaAnalysisObject::EMode mode )
                                 "fMCPoints.Podd::MCTrackPoint.fHitResid" },
     { "pt.trkres", "Track residual (mm)",
                               "fMCPoints.Podd::MCTrackPoint.fTrackResid" },
-    { 0 }
+    { nullptr }
   };
 
   return THaAnalysisObject::
     DefineVarsFromList( vars, THaAnalysisObject::kRVarDef,
-			mode, "", this, MC_PREFIX, here );
+			mode, "", this, MC_PREFIX, here, "" );
 }
 
-//_____________________________________________________________________________
-Int_t SimDecoder::init_cmap_openfile( FILE*& fi, TString& fname )
-{
-  // Use the analyzer file name search logic to find the crate map database file
-
-  const char* const here = "SimDecoder::init_cmap";
-
-  TDatime date(GetRunTime());    //FIXME: replace with TTimeStamp
-  fi = THaAnalysisObject::OpenFile(fCrateMapName,date,here,"r",0);
-  fname = "db_" + fCrateMapName + ".dat";
-  return 1;
-}
 //_____________________________________________________________________________
 MCTrack::MCTrack( Int_t number, Int_t pid,
 		  const TVector3& vertex, const TVector3& momentum )
   : fNumber(number), fPID(pid), fOrigin(vertex),
     fMomentum(momentum), fNHits(0), fHitBits(0), fNHitsFound(0), fFoundBits(0),
-    fReconFlags(0), fContamFlags(0), fMatchval(KBIG), fFitRank(-1),
-    fTrackRank(-1)
+    fReconFlags(0), fContamFlags(0), fMatchval(kBig), fFitRank(-1),
+    fTrackRank(-1), fMCFitPar{}, fRcFitPar{}
 {
-  for( Int_t i = 0; i < NFP; ++i ) {
-    fMCFitPar[i] = KBIG;
-    fRcFitPar[i] = KBIG;
-  }
+  fill_n( fMCFitPar, NFP, kBig );
+  fill_n( fRcFitPar, NFP, kBig );
 }
 
 //_____________________________________________________________________________
 MCTrack::MCTrack()
   : fNumber(0), fPID(0), fNHits(0), fHitBits(0), fNHitsFound(0),
-    fFoundBits(0), fReconFlags(0), fContamFlags(0), fMatchval(KBIG),
-    fFitRank(-1), fTrackRank(-1)
+    fFoundBits(0), fReconFlags(0), fContamFlags(0), fMatchval(kBig),
+    fFitRank(-1), fTrackRank(-1), fMCFitPar{}, fRcFitPar{}
 {
-  for( Int_t i = 0; i < NFP; ++i ) {
-    fMCFitPar[i] = KBIG;
-    fRcFitPar[i] = KBIG;
-  }
+  fill_n( fMCFitPar, NFP, kBig );
+  fill_n( fRcFitPar, NFP, kBig );
 }
 
 //_____________________________________________________________________________
@@ -239,7 +226,7 @@ void MCHitInfo::MCPrint() const
        << ", MCtime = " << fMCTime
        << ", num_bg = " << fContam
        << endl;
-};
+}
 
 //_____________________________________________________________________________
 Int_t MCTrackPoint::Compare( const TObject* obj ) const
@@ -248,7 +235,7 @@ Int_t MCTrackPoint::Compare( const TObject* obj ) const
   // Returns -1 if this is smaller than rhs, 0 if equal, +1 if greater.
 
   assert( dynamic_cast<const MCTrackPoint*>(obj) );
-  const MCTrackPoint* rhs = static_cast<const MCTrackPoint*>(obj);
+  const auto* rhs = static_cast<const MCTrackPoint*>(obj);
 
   if( fType  < rhs->fType  ) return -1;
   if( fType  > rhs->fType  ) return  1;

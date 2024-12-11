@@ -8,7 +8,7 @@
 //
 // This module assumes a small-acceptance pointing-type spectrometer
 // that generates tracks in TRANSPORT coordinates.
-// It is assumed that the spectrometer only reconstucts the 
+// It is assumed that the spectrometer only reconstructs the
 // position at the target transverse to the bend plane, i.e. y_tg, with 
 // relatively high precision. Any reconstructed or estimated x_tg is ignored.
 // The vertex is then defined as the intersection point of the 
@@ -34,7 +34,7 @@ ClassImp(THaReactionPoint)
 THaReactionPoint::THaReactionPoint( const char* name, const char* description,
 				    const char* spectro, const char* beam ) :
   THaPhysicsModule(name,description), fSpectroName(spectro), 
-  fBeamName(beam), fSpectro(NULL), fBeam(NULL)
+  fBeamName(beam), fSpectro(nullptr), fBeam(nullptr)
 {
   // Normal constructor.
 
@@ -45,7 +45,7 @@ THaReactionPoint::~THaReactionPoint()
 {
   // Destructor
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -61,9 +61,6 @@ void THaReactionPoint::Clear( Option_t* opt )
 Int_t THaReactionPoint::DefineVariables( EMode mode )
 {
   // Define/delete analysis variables
-
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
 
   return DefineVarsFromList( THaVertexModule::GetRVarDef(), mode );
 }
@@ -110,17 +107,17 @@ Int_t THaReactionPoint::Process( const THaEvData& )
   }
   static const TVector3 yax( 0.0, 1.0, 0.0 );
   TVector3 org, v; 
-  Double_t t;
 
   for( Int_t i = 0; i<ntracks; i++ ) {
-    THaTrack* theTrack = static_cast<THaTrack*>( tracks->At(i) );
+    auto* theTrack = static_cast<THaTrack*>( tracks->At(i) );
     // Ignore junk tracks
     if( !theTrack || !theTrack->HasTarget() ) 
       continue;  
     org.SetXYZ( 0.0, theTrack->GetTY(), 0.0 );
     org *= fSpectro->GetToLabRot();
     org += fSpectro->GetPointingOffset();
-    if( !IntersectPlaneWithRay( theTrack->GetPvect(), yax, org, 
+    Double_t t = 0; // dummy
+    if( !IntersectPlaneWithRay( theTrack->GetPvect(), yax, org,
 				beam_org, beam_ray, t, v ))
       continue; // Oops, track and beam parallel?
     theTrack->SetVertex(v);
@@ -128,7 +125,7 @@ Int_t THaReactionPoint::Process( const THaEvData& )
     // FIXME: preliminary
     if( theTrack == fSpectro->GetGoldenTrack() ) {
       fVertex = theTrack->GetVertex();
-      fVertexOK = kTRUE;
+      fVertexOK = true;
     }
     // FIXME: calculate vertex coordinate errors here (need beam errors)
 

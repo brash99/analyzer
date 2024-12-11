@@ -8,40 +8,44 @@
 
 #include "THaQWEAKHelicityReader.h"
 #include "THaEvData.h"
-#include "TMath.h"
 #include "TError.h"
-#include "VarDef.h"
 #include "THaAnalysisObject.h"   // For LoadDB
 #include <iostream>
-#include <vector>
 #include "TH1F.h"
 
 using namespace std;
 
 //____________________________________________________________________
+Bool_t THaQWEAKHelicityReader::ROCinfo::valid() const
+{
+  return roc < Decoder::MAXROC;
+}
+
+//____________________________________________________________________
 THaQWEAKHelicityReader::THaQWEAKHelicityReader()
   : fPatternTir(0), fHelicityTir(0), fTSettleTir(0), fTimeStampTir(0),
     fOldTimeStampTir(0), fIRing(0),
+    fHelicityRing{}, fPatternRing{},
+    fTimeStampRing{}, fT3Ring{}, fU3Ring{}, fT5Ring{}, fT10Ring{},
     fQWEAKDebug(0),      // Debug level
-    fHaveROCs(kFALSE),   // Required ROCs are defined
-    fNegGate(kFALSE)     // Invert polarity of gate, so that 0=active
+    fHaveROCs(false),   // Required ROCs are defined
+    fNegGate(false),    // Invert polarity of gate, so that 0=active
+    fHistoR{}
 {
   // Default constructor
-  
-  memset( fROCinfo, 0, 3*sizeof(ROCinfo) );
-  for( Int_t i = 0; i < NHISTR; ++i )
-    fHistoR[i] = 0;
 }
-//____________________________________________________________________
-THaQWEAKHelicityReader::~THaQWEAKHelicityReader() 
-{
-  // Destructor
 
-  // Histograms will be deleted by ROOT
-  // for( Int_t i = 0; i < NHISTR; ++i ) {
-  //   delete fHistoR[i];
-  // }
-}
+//____________________________________________________________________
+//THaQWEAKHelicityReader::~THaQWEAKHelicityReader()
+//{
+//  // Destructor
+//
+//  // Histograms will be deleted by ROOT
+//  // for( Int_t i = 0; i < NHISTR; ++i ) {
+//  //   delete fHistoR[i];
+//  // }
+//}
+
 //____________________________________________________________________
 void THaQWEAKHelicityReader::Print() 
 {
@@ -52,7 +56,7 @@ void THaQWEAKHelicityReader::Print()
       <<" , "<<fHelicityTir<<" , "<<fTSettleTir<<endl;
   cout<<"fTimeStampTir ="<<fTimeStampTir<<endl;
   cout<<"fIRing="<<fIRing<<endl<<endl;
-  for (int j=0;j<fIRing;j++)
+  for (UInt_t j=0;j<fIRing;j++)
     {
       cout<<j<<"Pattern, helicity, time, T3, U3, T5, T10="
 	  <<fHelicityRing[j]<<" , "
@@ -75,8 +79,6 @@ void THaQWEAKHelicityReader::Print()
 	  <<fT10Ring[0]<<endl;     
     }      
   cout<<"================================================\n";
-
-  return;
 }
 
 //____________________________________________________________________
@@ -97,30 +99,29 @@ void THaQWEAKHelicityReader::Clear( Option_t* )
       fT5Ring[i]=0;
       fT10Ring[i]=0;
     }
-
 }
 
 //____________________________________________________________________
-Int_t THaQWEAKHelicityReader::FindWord( const THaEvData& evdata, 
-				     const ROCinfo& info )
+UInt_t THaQWEAKHelicityReader::FindWord( const THaEvData& evdata,
+                                         const ROCinfo& info )
 // find the index of the word we are looking for given a header
 // or simply return the index already stored in ROC info (in that case
 // the header stored in ROC info needs to be 0 
 {
-  Int_t len = evdata.GetRocLength(info.roc);
+  UInt_t len = evdata.GetRocLength(info.roc);
   if (len <= 4) 
     return -1;
 
-  Int_t i;
+  UInt_t i = 0;
   if( info.header == 0 )
     i = info.index;
   else {
-    for( i=0; i<len &&
+    for( ; i<len &&
 	   (evdata.GetRawData(info.roc, i) & 0xffff000) != info.header;
 	 ++i) {}
     i += info.index;
   }
-  return (i < len) ? i : -1;
+  return (i < len) ? i : kMaxUInt;
 }
 
 //_____________________________________________________________________________
@@ -162,20 +163,18 @@ void THaQWEAKHelicityReader::Begin()
   fHistoR[9]=new TH1F("hel.T5.Ring","hel.T5.Ring",53,-1.5, 50.5);
   fHistoR[10]=new TH1F("hel.T10.Ring","hel.T10.Ring",53,-1.5, 50.5);
   fHistoR[11]=new TH1F("hel.NRing","hel.NRing",503,-1.5, 501.5);
-
-  return;
 }
+
 //____________________________________________________________________
 void THaQWEAKHelicityReader::End()
 {
   // static const char* const here = "THaQWEAKHelicityReader::End";
   // cout<<here<<endl;
 
-  for(int i=0;i<NHISTR;i++)
-    fHistoR[i]->Write();
-
-  return;
+  for(auto & i : fHistoR)
+    i->Write();
 }
+
 //____________________________________________________________________
 Int_t THaQWEAKHelicityReader::ReadData( const THaEvData& evdata ) 
 {
@@ -198,17 +197,17 @@ Int_t THaQWEAKHelicityReader::ReadData( const THaEvData& evdata )
     ::Error( here, "ROC data (detector map) not properly set up." );
     return -1;
   }
-  Int_t hroc = fROCinfo[kHel].roc;
-  Int_t len = evdata.GetRocLength(hroc);
+  UInt_t hroc = fROCinfo[kHel].roc;
+  UInt_t len = evdata.GetRocLength(hroc);
   if (len <= 4) 
     return -1;
 
-  Int_t ihel = FindWord( evdata, fROCinfo[kHel] );
-  if (ihel < 0) {
+  UInt_t ihel = FindWord( evdata, fROCinfo[kHel] );
+  if (ihel == kMaxUInt) {
     ::Error( here , "Cannot find helicity" );
     return -1;
   }
-  Int_t data = evdata.GetRawData( hroc, ihel );  
+  UInt_t data = evdata.GetRawData( hroc, ihel );
   fPatternTir =(data & 0x20)>>5;
   fHelicityTir=(data & 0x10)>>4;
   fTSettleTir =(data & 0x40)>>6;
@@ -217,16 +216,16 @@ Int_t THaQWEAKHelicityReader::ReadData( const THaEvData& evdata )
   len = evdata.GetRocLength(hroc);
   if (len <= 4) 
     {
-      ::Error( here, "length of roc event not matching expection ");
+      ::Error( here, "length of roc event not matching expectation ");
       return -1;
     }
-  Int_t itime = FindWord (evdata, fROCinfo[kTime] );
-  if (itime < 0) {
+  UInt_t itime = FindWord (evdata, fROCinfo[kTime] );
+  if (itime == kMaxUInt) {
     ::Error( here, "Cannot find timestamp" );
     return -1;
   }
-  
-  fTimeStampTir=static_cast<UInt_t> (evdata.GetRawData( hroc, itime ));  
+
+  fTimeStampTir = evdata.GetRawData(hroc, itime);
   
   // Invert the gate polarity if requested
   //  if( fNegGate )
@@ -236,15 +235,15 @@ Int_t THaQWEAKHelicityReader::ReadData( const THaEvData& evdata )
   len = evdata.GetRocLength(hroc);
   if (len <= 4) 
     {
-      ::Error( here, "length of roc event not matching expection (message 2)");
+      ::Error( here, "length of roc event not matching expectation (message 2)");
       //  std::cout<<" len ="<<len<<endl;
       //      std::cout<<"kRING="<<kRing<<" hroc="<<hroc<<endl;
       return -1;
     }
-  Int_t index=0;
-  while (index < len && fIRing == 0) 
+  UInt_t index = 0;
+  while( index < len && fIRing == 0 )
     {
-      Int_t header=evdata.GetRawData(hroc,index++);
+      UInt_t header=evdata.GetRawData(hroc,index++);
       if ((header & 0xffff0000) == 0xfb1b0000) 
 	{
 	  fIRing = header & 0x3ff;
@@ -259,7 +258,7 @@ Int_t THaQWEAKHelicityReader::ReadData( const THaEvData& evdata )
       ::Error( here, "Ring depth to large ");
       return -1;
     }
-  for(int i=0;i<fIRing; i++)
+  for(UInt_t i=0;i<fIRing; i++)
     {
       fTimeStampRing[i]=evdata.GetRawData(hroc,index++);
       data=evdata.GetRawData(hroc,index++);
@@ -288,7 +287,7 @@ void THaQWEAKHelicityReader::FillHisto()
   fHistoR[2]->Fill(fHelicityTir);
   fHistoR[3]->Fill(fTimeStampTir-fOldTimeStampTir);
   fOldTimeStampTir=fTimeStampTir;
-  for(int i=0;i<fIRing;i++)
+  for(UInt_t i=0;i<fIRing;i++)
     {
       fHistoR[4]->Fill(fPatternRing[i]);
       fHistoR[5]->Fill(fHelicityRing[i]);
@@ -299,15 +298,13 @@ void THaQWEAKHelicityReader::FillHisto()
       fHistoR[10]->Fill(fT10Ring[i]);
     }
   fHistoR[11]->Fill(fIRing);
-
-  return;
 }
 
 
 //TODO: this should not be needed once LoadDB can fill fROCinfo directly
 //____________________________________________________________________
-Int_t THaQWEAKHelicityReader::SetROCinfo( EROC which, Int_t roc,
-				       Int_t header, Int_t index )
+Int_t THaQWEAKHelicityReader::SetROCinfo( EROC which, UInt_t roc,
+                                          UInt_t header, UInt_t index )
 {
 
   // Define source and offset of data.  Normally called by ReadDatabase
@@ -333,4 +330,3 @@ Int_t THaQWEAKHelicityReader::SetROCinfo( EROC which, Int_t roc,
 
 //____________________________________________________________________
 ClassImp(THaQWEAKHelicityReader)
-

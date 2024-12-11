@@ -18,9 +18,9 @@
 THaEpicsEbeam::THaEpicsEbeam( const char* name, const char* description,
 			      const char* beam, const char* epics_var,
 			      Double_t scale_factor ) : 
-  THaPhysicsModule( name,description ), fEcorr(0.0), fEpicsIsMomentum(kFALSE),
+  THaPhysicsModule( name,description ), fEcorr(0.0), fEpicsIsMomentum(false),
   fScaleFactor(scale_factor), fBeamName(beam), fEpicsVar(epics_var), 
-  fBeamModule(NULL)
+  fBeamModule(nullptr)
 {
   // Constructor.
 }
@@ -63,19 +63,13 @@ THaAnalysisObject::EStatus THaEpicsEbeam::Init( const TDatime& run_time )
 //_____________________________________________________________________________
 Int_t THaEpicsEbeam::DefineVariables( EMode mode )
 {
-  // Initialize global variables and lookup table for decoder
-
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
+  // Initialize global variables
 
   RVarDef vars[] = {
     { "ecorr", "Beam energy correction (output-input) (GeV)", "fEcorr" },
-    { 0 }
+    { nullptr }
   };
-  DefineVarsFromList( vars, mode );
-
-  // Define the variables for the beam info subobject
-  return DefineVarsFromList( GetRVarDef(), mode );
+  return DefineVarsFromList( vars, mode );
 }
 
 //_____________________________________________________________________________
@@ -137,7 +131,7 @@ void THaEpicsEbeam::SetEpicsVar( const char* name )
 //_____________________________________________________________________________
 void THaEpicsEbeam::SetEpicsIsMomentum( Bool_t mode ) 
 {
-  // If mode=kTRUE, interpret EPICS data as momentum rather than energy
+  // If mode=true, interpret EPICS data as momentum rather than energy
   if( !IsInit())
     fEpicsIsMomentum = mode; 
   else
@@ -147,7 +141,7 @@ void THaEpicsEbeam::SetEpicsIsMomentum( Bool_t mode )
 //_____________________________________________________________________________
 void THaEpicsEbeam::SetScaleFactor( Double_t factor ) 
 {
-  // If mode=kTRUE, interpret EPICS data as momentum rather than energy
+  // If mode=true, interpret EPICS data as momentum rather than energy
   if( !IsInit())
     fScaleFactor = factor;
   else

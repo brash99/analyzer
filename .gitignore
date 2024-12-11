@@ -21,7 +21,7 @@ hana_decode/apps/etclient
 hana_decode/apps/tstcoda
 apps/dbconvert
 bin/
-build/
+build*/
 
 # Generated files
 *Dict.C
@@ -60,11 +60,15 @@ config.log
 .sconf_temp/
 /dist/
 
-#eclipse stuff
+#IDE work files
 .project
 .cproject
 .pydevproject
-.settings/
+.settings
+.externalToolBuilders
+.idea
+cmake-build-*
+/build.log
 
 #Doxygen stuff
 docs/Doxygen.tag

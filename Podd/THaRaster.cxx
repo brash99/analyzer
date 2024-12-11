@@ -11,30 +11,25 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "THaRaster.h"
-#include "THaEvData.h"
-#include "THaDetMap.h"
-#include "VarDef.h"
-#include "VarType.h"
 #include "TMath.h"
-#include <iostream>
 
 using namespace std;
 
-static const UInt_t NPOS = 3;
-static const UInt_t NBPM = 2;
+static constexpr Int_t NPOS = 3;
+static constexpr Int_t NBPM = 2;
+static constexpr Int_t NCHAN = 2*NBPM;
 
 //_____________________________________________________________________________
 THaRaster::THaRaster( const char* name, const char* description,
-				  THaApparatus* apparatus )
+                      THaApparatus* apparatus )
   : THaBeamDet(name,description,apparatus), fRawPos(NBPM), fRawSlope(NBPM),
     fRasterFreq(NBPM), fSlopePedestal(NBPM), fRasterPedestal(NBPM),
     fNfired(0)
 {
   // Constructor
-  fRaw2Pos[0].ResizeTo(NPOS,NBPM);
-  fRaw2Pos[1].ResizeTo(NPOS,NBPM);
-  fRaw2Pos[2].ResizeTo(NPOS,NBPM);
-
+  fRaw2Pos[0].ResizeTo(NPOS, NBPM);
+  fRaw2Pos[1].ResizeTo(NPOS, NBPM);
+  fRaw2Pos[2].ResizeTo(NPOS, NBPM);
 }
 
 
@@ -56,22 +51,45 @@ Int_t THaRaster::ReadDatabase( const TDatime& date )
     return kInitError;
 
   // fOrigin.SetXYZ(0,0,0);
-  Int_t err = kOK;// = ReadGeometry( file, date );
+  //Int_t err = ReadGeometry( file, date );
 
-  if( !err ) {
-    memset( zpos, 0, sizeof(zpos) );
-    // Read configuration parameters
-    DBRequest config_request[] = {
-      { "detmap",   &detmap,  kIntV },
-      { "zpos",     zpos,     kDouble, NPOS, 1 },
-      { 0 }
-    };
-    err = LoadDB( file, date, config_request, fPrefix );
-  }
+//  if( !err ) {
+  memset(zpos, 0, sizeof(zpos));
+  // Read configuration parameters
+  DBRequest config_request[] = {
+    {"detmap", &detmap, kIntV},
+    {"zpos",   zpos,    kDouble, NPOS, true},
+    {nullptr}
+  };
+  Int_t err = LoadDB(file, date, config_request, fPrefix);
+//  }
 
-  UInt_t flags = THaDetMap::kFillLogicalChannel | THaDetMap::kFillModel;
+  // Fill the detector map. It must specify NBPM(=2) channels for the x/y
+  // position readouts. Another NBPM(=2) channels for the x/y raw slopes are
+  // optional. These channels must be defined in exactly this order.
+  // Although the existing database format includes the logical channel number,
+  // which would in principle allow a different order, its value was ignored in
+  // the original code and replaced with the order in which modules are listed
+  // in the database. It is unclear why the number was first introduced and then
+  // extra code was written to support ignoring it. Bizarre.
+  // To maintain compatibility with existing databases, we ignore the logical
+  // channel number altogether here. Alternatively, we could use it, but then
+  // many old databases would become invalid, causing confusion and errors.
+  UInt_t flags = THaDetMap::kSkipLogicalChannel | THaDetMap::kFillModel;
   if( !err && FillDetMap(detmap, flags, here) <= 0 ) {
     err = kInitError;  // Error already printed by FillDetMap
+  }
+  if( !err ) {
+    UInt_t nchan = fDetMap->GetTotNumChan();
+    if( nchan != NBPM && nchan != NCHAN ) {
+      Error(Here(here), "Incorrect number of channels = %u defined in "
+                        "detector map. Must be either %u or %u. Fix database.",
+            nchan, NBPM, NCHAN);
+      err = kInitError;
+    } else if( fDebug > 0 && nchan == NBPM ) {
+      Warning( Here(here), "Only %u channels defined in detector map. Raster "
+                           "slope information will not be available", nchan);
+    }
   }
 
   if( !err ) {
@@ -84,12 +102,12 @@ Int_t THaRaster::ReadDatabase( const TDatime& date )
 
     DBRequest calib_request[] = {
       { "freqs",      freq,     kDouble, NBPM },
-      { "rast_peds",  rped,     kDouble, NBPM, 1 },
-      { "slope_peds", sped,     kDouble, NBPM, 1 },
+      { "rast_peds",  rped,     kDouble, NBPM, true },
+      { "slope_peds", sped,     kDouble, NBPM, true },
       { "raw2posA",   raw2posA, kDouble, NBPM*NPOS },
       { "raw2posB",   raw2posB, kDouble, NBPM*NPOS },
       { "raw2posT",   raw2posT, kDouble, NBPM*NPOS },
-      { 0 }
+      { nullptr }
     };
     err = LoadDB( file, date, calib_request, fPrefix );
   }
@@ -130,9 +148,6 @@ Int_t THaRaster::DefineVariables( EMode mode )
 {
   // Initialize global variables and lookup table for decoder
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
-
   // Register variables in global list
   
   RVarDef vars[] = {
@@ -152,11 +167,10 @@ Int_t THaRaster::DefineVariables( EMode mode )
     { "target.dir.x", "reconstructed x-component of beam direction", "fDirection.fX"},
     { "target.dir.y", "reconstructed y-component of beam direction", "fDirection.fY"},
     { "target.dir.z", "reconstructed z-component of beam direction", "fDirection.fZ"},
-    { 0 }
+    { nullptr }
   };
     
   return DefineVarsFromList( vars, mode );
-
 }
 
 //_____________________________________________________________________________
@@ -164,9 +178,7 @@ THaRaster::~THaRaster()
 {
   // Destructor. Remove variables from global list.
 
-  if( fIsSetup )
-    RemoveVariables();
-
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -188,58 +200,62 @@ void THaRaster::Clear( Option_t* opt )
 //_____________________________________________________________________________
 Int_t THaRaster::Decode( const THaEvData& evdata )
 {
-
-  // clears the event structure
+  // Decode Raster
   // loops over all modules defined in the detector map
   // copies raw data into local variables
   // pedestal subtraction is not foreseen for the raster
 
-  const char* const here = "Decode()";
+  fNfired += THaBeamDet::Decode(evdata);
 
-  UInt_t chancnt = 0;
-
-  for (Int_t i = 0; i < fDetMap->GetSize(); i++ ){
-    THaDetMap::Module* d = fDetMap->GetModule( i );
-
-    for (Int_t j=0; j< evdata.GetNumChan( d->crate, d->slot ); j++) {
-      Int_t chan = evdata.GetNextChan( d->crate, d->slot, j);
-      if ((chan>=d->lo)&&(chan<=d->hi)) {
-	Int_t data = evdata.GetData( d->crate, d->slot, chan, 0 );
-	UInt_t k = chancnt + d->first +
-	  ((d->reverse) ? d->hi - chan : chan - d->lo) -1;
-	if (k<NBPM) {
-	  fRawPos(k)= data;
-	  fNfired++;
-	}
-	else if (k<2*NBPM) {
-	  fRawSlope(k-NBPM)= data;
-	  fNfired++;
-	}
-	else {
-	  Warning( Here(here), "Illegal detector channel: %d", k );
-	}
-      }
-
-
-    }
-
-    chancnt+=d->hi-d->lo+1;
-  }
-
-  if (fNfired!=2*NBPM) {
-      Warning( Here(here), "Number of fired Channels out of range. "
-	       "Setting beam position to nominal values");
+  if( fNfired != NBPM && fNfired != NCHAN ) {
+    Warning(Here("Decode"), "Unexpected number of fired channels = %d."
+                            "Setting beam position to nominal values.", fNfired);
+    Clear();
   }
   return 0;
 }
 
-//____________________________________________________
-
-Int_t THaRaster::Process( )
+//_____________________________________________________________________________
+bool THaRaster::CheckHitInfo( const DigitizerHitInfo_t& hitinfo ) const
 {
+  Int_t k = hitinfo.lchan;
+  if( k < 0 || k >= NCHAN ) {
+    Warning(Here("Decode"), "Illegal detector channel %d", k);
+    return false;
+  }
+  return true;
+}
 
-  for ( UInt_t i = 0; i<NPOS; i++) {
-    
+//_____________________________________________________________________________
+OptUInt_t THaRaster::LoadData( const THaEvData& evdata,
+                               const DigitizerHitInfo_t& hitinfo )
+{
+  if( !CheckHitInfo(hitinfo) )
+    return nullopt;
+  return THaBeamDet::LoadData(evdata, hitinfo);
+}
+
+//_____________________________________________________________________________
+Int_t THaRaster::StoreHit( const DigitizerHitInfo_t& hitinfo, UInt_t data )
+{
+  // Store 'data' from single hit in channel 'hitinfo'. Called from Decode()
+
+  Int_t k = hitinfo.lchan;
+  assert(k >= 0 && k < NCHAN); // else bug in LoadData
+
+  if( k < NBPM )
+    fRawPos(k) = data;
+  else
+    fRawSlope(k-NBPM) = data;
+
+  return 0;
+}
+
+//_____________________________________________________________________________
+Int_t THaRaster::Process()
+{
+  for( Int_t i = 0; i < NPOS; i++ ) {
+
     //      fPosition[i] = fRaw2Pos[i]*fRawPos+fPosOff[i] ;
     //    this is how i wish it would look like,
     //    but unluckily multiplications between tmatrix and tvector
@@ -247,16 +263,16 @@ Int_t THaRaster::Process( )
     //    so i have to do it by hand instead ):
 
     TVectorD dum(fRawPos);
-    dum*=fRaw2Pos[i];
-    fPosition[i].SetXYZ( dum(0)+fPosOff[i](0),
-			 dum(1)+fPosOff[i](1),
-			 dum(2)+fPosOff[i](2)  );
+    dum *= fRaw2Pos[i];
+    fPosition[i].SetXYZ(dum(0) + fPosOff[i](0),
+                        dum(1) + fPosOff[i](1),
+                        dum(2) + fPosOff[i](2));
 
   }
-  
+
   fDirection = fPosition[1] - fPosition[0];
-  
-  return 0 ;
+
+  return 0;
 }
 
 

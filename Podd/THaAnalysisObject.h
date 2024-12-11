@@ -10,13 +10,16 @@
 #include "TNamed.h"
 #include "THaGlobals.h"
 #include "TDatime.h"
-#include "VarDef.h"
+#include "Database.h"
+#include "DataType.h"
+#include "OptionalType.h"
 
 #include <vector>
 #include <string>
 #include <cstdio>
 #include <map>
-//#include <stdarg.h>
+#include <cstdarg>
+#include <utility>
 
 class THaEvData; //needed by derived classes
 class TList;
@@ -25,29 +28,30 @@ class THaRunBase;
 class THaOutput;
 class TObjArray;
 
-const char* Here( const char* here, const char* prefix = NULL );
-
 class THaAnalysisObject : public TNamed {
   
 public:
-  enum EStatus { kOK, kNotinit, kInitError, kFileError };
+  enum EStatus { kOK = 0, kInitError = -8, kFileError = -9, kNotinit = -10 };
   enum EType   { kVarDef, kRVarDef };
   enum EMode   { kDefine, kDelete };
 
-  static const Double_t kBig; // = 1.e38; // default junk value
-  
   THaAnalysisObject();  // only for ROOT I/O
-  
+  THaAnalysisObject( const THaAnalysisObject& ) = delete;
+  THaAnalysisObject( const THaAnalysisObject&& ) = delete;
+  THaAnalysisObject& operator=( const THaAnalysisObject& ) = delete;
+  THaAnalysisObject& operator=( const THaAnalysisObject&& ) = delete;
+
   virtual ~THaAnalysisObject();
   
-  virtual Int_t        Begin( THaRunBase* r=0 );
+  virtual Int_t        Begin( THaRunBase* r=nullptr );
   virtual void         Clear( Option_t* ="" ) {} // override TNamed::Clear()
-  virtual Int_t        End( THaRunBase* r=0 );
+  virtual Int_t        End( THaRunBase* r=nullptr );
   virtual const char*  GetDBFileName() const;
           const char*  GetClassName() const;
           const char*  GetConfig() const         { return fConfig.Data(); }
           Int_t        GetDebug() const          { return fDebug; }
           const char*  GetPrefix() const         { return fPrefix; }
+          TString      GetPrefixName() const;
           EStatus      Init();
   virtual EStatus      Init( const TDatime& run_time );
           Bool_t       IsInit() const            { return IsOK(); }
@@ -62,49 +66,19 @@ public:
           EStatus      Status() const            { return fStatus; }
 
   virtual Int_t        InitOutput( THaOutput * );
-          Bool_t       IsOKOut()                 { return fOKOut; }
+          Bool_t       IsOKOut() const           { return fOKOut; }
+  virtual FILE*        OpenFile( const TDatime& date );
+  virtual FILE*        OpenRunDBFile( const TDatime& date );
   virtual void         Print( Option_t* opt="" ) const;
 
-  // Static functions to provide easy access to database files
-  // from CINT scripts etc.
-  static  FILE*   OpenFile( const char* name, const TDatime& date,
-			    const char* here = "OpenFile()",
-			    const char* filemode = "r", 
-			    const int debug_flag = 1);
-  static Int_t    ReadDBline( FILE* fp, char* buf, size_t bufsiz,
-			      std::string& line );
-
-  // Access functions for reading tag/value pairs from database files
-  static  Int_t   LoadDBvalue( FILE* file, const TDatime& date, 
-			       const char* tag, Double_t& value );
-  static  Int_t   LoadDBvalue( FILE* file, const TDatime& date, 
-			       const char* tag, Int_t& value );
-  static  Int_t   LoadDBvalue( FILE* file, const TDatime& date, 
-			       const char* tag, std::string& text );
-  static  Int_t   LoadDBvalue( FILE* file, const TDatime& date, 
-			       const char* tag, TString& text );
-  template <class T>
-  static  Int_t   LoadDBarray( FILE* file, const TDatime& date, 
- 			       const char* tag, std::vector<T>& values );
-  template <class T>
-  static  Int_t   LoadDBmatrix( FILE* file, const TDatime& date, 
-				const char* tag, 
-				std::vector<std::vector<T> >& values,
-				UInt_t ncols );
-  static  Int_t   LoadDB( FILE* file, const TDatime& date, 
-			  const DBRequest* request, const char* prefix,
-			  Int_t search = 0,
-			  const char* here = "THaAnalysisObject::LoadDB" );
-  static  Int_t   SeekDBdate( FILE* file, const TDatime& date,
-			      Bool_t end_on_tag = false );
-  static  Int_t   SeekDBconfig( FILE* file, const char* tag,
-				const char* label = "config",
-				Bool_t end_on_tag = false );
-  static  bool    IsTag( const char* buf );
-
-  // Generic utility functions
-  static std::vector<std::string> vsplit( const std::string& s );
-  static TString& GetObjArrayString( const TObjArray* params, Int_t pos );
+  // For backwards compatibility
+  static Int_t    LoadDB( FILE* file, const TDatime& date,
+                          const DBRequest* request, const char* prefix,
+                          Int_t search = 0,
+                          const char* here = "THaAnalysisObject::LoadDB" )
+  {
+    return Podd::LoadDatabase(file, date, request, prefix, search, here);
+  }
 
   // Geometry utility functions
   static  void    GeoToSph( Double_t  th_geo, Double_t  ph_geo,
@@ -120,12 +94,13 @@ public:
 					 Double_t& length,
 					 TVector3& intersect );
 
-  static Int_t    DefineVarsFromList( const void* list, 
-				      EType type, EMode mode,
-				      const char* var_prefix,
-				      const TObject* obj, 
-				      const char* prefix, 
-				      const char* here );
+  static Int_t    DefineVarsFromList( const void* list,
+                                      EType type, EMode mode,
+                                      const char* def_prefix,
+                                      const TObject* obj,
+                                      const char* prefix,
+                                      const char* here,
+                                      const char* comment_subst = "" );
 
   static void     PrintObjects( Option_t* opt="" );
 
@@ -150,15 +125,16 @@ protected:
   TObject*        fExtra;     // Additional member data (for binary compat.)
 
   virtual Int_t        DefineVariables( EMode mode = kDefine );
-          Int_t        DefineVarsFromList( const VarDef* list, 
-					   EMode mode = kDefine,
-					   const char* var_prefix="" ) const;
-          Int_t        DefineVarsFromList( const RVarDef* list, 
-					   EMode mode = kDefine,
-					   const char* var_prefix="" ) const;
-          Int_t        DefineVarsFromList( const void* list, 
-					   EType type, EMode mode,
-					   const char* var_prefix="" ) const;
+          Int_t        DefineVarsFromList( const VarDef* list,
+                                           EMode mode = kDefine,
+                                           const char* def_prefix = "",
+                                           const char* comment_subst = "" ) const;
+          Int_t        DefineVarsFromList( const RVarDef* list, EMode mode,
+                                           const char* def_prefix = "",
+                                           const char* comment_subst = "" ) const;
+          Int_t        DefineVarsFromList( const void* list, EType type,
+                                           EMode mode, const char* def_prefix = "",
+                                           const char* comment_subst = "" ) const;
 
   virtual void         DoError( int level, const char* location,
 				const char* fmt, va_list va) const;
@@ -169,26 +145,17 @@ protected:
   virtual const char*  Here( const char* ) const;
   virtual const char*  ClassNameHere( const char* ) const;
           Int_t        LoadDB( FILE* f, const TDatime& date,
-			       const DBRequest* req, Int_t search = 0 );
+			       const DBRequest* req, Int_t search = 0 ) const;
           void         MakePrefix( const char* basename );
   virtual void         MakePrefix();
-  virtual FILE*        OpenFile( const TDatime& date );
-  virtual FILE*        OpenRunDBFile( const TDatime& date );
   virtual Int_t        ReadDatabase( const TDatime& date );
   virtual Int_t        ReadRunDatabase( const TDatime& date );
-  virtual Int_t        RemoveVariables();
-
-  // Support function for reading database files
-  static std::vector<std::string> 
-    GetDBFileList( const char* name, const TDatime& date,
-		   const char* here = "GetDBFileList()" );
-  
-  static char* ReadComment( FILE* fp, char* buf, const int len );
+          Int_t        RemoveVariables();
 
 #ifdef WITH_DEBUG
-  void DebugPrint( const DBRequest* list );
+  void DebugPrint( const DBRequest* list ) const;
 
-  template <typename T>  // available for double and float
+  template <typename T>  // available for Double_t, Float_t, UInt_t and Int_t
   static void WriteValue( T val, int p=0, int w=5 );
 #endif
 
@@ -196,9 +163,7 @@ protected:
   THaAnalysisObject( const char* name, const char* description );
 
 private:
-  // Prevent default construction, copying, assignment
-  THaAnalysisObject( const THaAnalysisObject& );
-  THaAnalysisObject& operator=( const THaAnalysisObject& );
+  Int_t DefineVariablesWrapper( EMode mode = kDefine );
 
   static TList* fgModules;  // List of all currently existing Analysis Modules
 

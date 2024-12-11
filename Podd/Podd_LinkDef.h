@@ -11,7 +11,6 @@
 #pragma link C++ global gHaEvtHandlers;
 #pragma link C++ global gHaRun;
 #pragma link C++ global gHaDB;
-#pragma link C++ global gHaTextvars;
 
 #pragma link C++ nestedclass;
 #pragma link C++ nestedtypedef;
@@ -102,7 +101,6 @@
 #pragma link C++ class THaHelicityDet+;
 #pragma link C++ class THaPhotoReaction+;
 #pragma link C++ class THaSAProtonEP+;
-#pragma link C++ class THaTextvars+;
 #pragma link C++ class THaEvtTypeHandler+;
 #pragma link C++ class THaScalerEvtHandler+;
 #pragma link C++ class THaEpicsEvtHandler+;
@@ -112,6 +110,14 @@
 #pragma link C++ class Podd::MCTrackPoint+;
 #pragma link C++ class Podd::SimDecoder+;
 #pragma link C++ class Podd::CodaRawDecoder+;
+#pragma link C++ class Podd::InterStageModule+;
+#pragma link C++ class Podd::TimeCorrectionModule+;
+#pragma link C++ class Podd::DetectorData+;
+#pragma link C++ class Podd::ADCData+;
+#pragma link C++ class Podd::PMTData+;
+#pragma link C++ class Podd::MultiFileRun+;
+#pragma link C++ class Podd::MultiFileRun::StreamInfo+;
+#pragma link C++ class Podd::MultiFileRun::FileInfo+;
 
 #ifdef ONLINE_ET
 #pragma link C++ class THaOnlRun+;

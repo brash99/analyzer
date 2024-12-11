@@ -21,16 +21,15 @@
 THaNonTrackingDetector::THaNonTrackingDetector( const char* name,
 						const char* description,
 						THaApparatus* apparatus )
-  : THaSpectrometerDetector(name,description,apparatus)
+  : THaSpectrometerDetector(name,description,apparatus),
+    fTrackProj(new TClonesArray( "THaTrackProj", 5 ))
 {
   // Normal constructor with name and description
-
-  fTrackProj = new TClonesArray( "THaTrackProj", 5 );
 }
 
 //______________________________________________________________________________
 THaNonTrackingDetector::THaNonTrackingDetector()
-  : THaSpectrometerDetector(), fTrackProj(0)
+  : THaSpectrometerDetector(), fTrackProj(nullptr)
 {
   // for ROOT I/O only
 }
@@ -40,7 +39,8 @@ THaNonTrackingDetector::~THaNonTrackingDetector()
 {
   // Destructor
 
-  delete fTrackProj; fTrackProj = 0;
+  RemoveVariables();
+  delete fTrackProj; fTrackProj = nullptr;
 }
 
 //_____________________________________________________________________________
@@ -54,13 +54,33 @@ void THaNonTrackingDetector::Clear( Option_t* opt )
 }
 
 //_____________________________________________________________________________
+Int_t THaNonTrackingDetector::DefineVariables( EMode mode )
+{
+  // Define global analysis variables
+
+  Int_t ret = THaSpectrometerDetector::DefineVariables(mode);
+  if( ret )
+    return ret;
+
+  // Define analysis variables on our data members
+  RVarDef vars[] = {
+    { "trn",    "Number of tracks for hits",         "GetNTracks()" },
+    { "trx",    "x-position of track in det plane",  "fTrackProj.THaTrackProj.fX" },
+    { "try",    "y-position of track in det plane",  "fTrackProj.THaTrackProj.fY" },
+    { "trpath", "TRCS pathlen of track to det plane","fTrackProj.THaTrackProj.fPathl" },
+    { nullptr }
+  };
+  return DefineVarsFromList( vars, mode );
+}
+
+//_____________________________________________________________________________
 Int_t THaNonTrackingDetector::GetNTracks() const
 {
   // Return number of tracks found to be crossing this detector
 
   Int_t n_cross = 0;
   for( Int_t i=0; i<fTrackProj->GetLast()+1; i++ ) {
-    THaTrackProj* proj = static_cast<THaTrackProj*>( fTrackProj->At(i) );
+    auto* proj = static_cast<THaTrackProj*>( fTrackProj->At(i) );
     assert( proj ); // else logic error in CalcTrackProj
     if( proj->IsOK() )
       ++n_cross;
@@ -87,12 +107,12 @@ Int_t THaNonTrackingDetector::CalcTrackProj( TClonesArray& tracks )
   fTrackProj->Clear();  // already done in Clear(), but do for safety
   Int_t n_cross = 0;
   for( Int_t i=0; i<n_track; i++ ) {
-    THaTrack* theTrack = static_cast<THaTrack*>( tracks.At(i) );
+    auto* theTrack = static_cast<THaTrack*>( tracks.At(i) );
     assert( theTrack );  // else logic error in tracking detector
 
     Double_t xc = kBig, yc = kBig, pathl = kBig;
     Bool_t found = CalcTrackIntercept( theTrack, pathl, xc, yc );
-    THaTrackProj* proj = new ( (*fTrackProj)[i] ) THaTrackProj(xc,yc,pathl);
+    auto* proj = new ( (*fTrackProj)[i] ) THaTrackProj(xc,yc,pathl);
     if( found && !IsInActiveArea(xc,yc) )
       found = false;
     proj->SetOK(found);

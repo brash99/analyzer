@@ -26,15 +26,15 @@ using namespace std;
 
 //_____________________________________________________________________________
 THaApparatus::THaApparatus( const char* name, const char* description ) : 
-  THaAnalysisObject(name,description)
+  THaAnalysisObject(name,description),
+  fDetectors{new TList}
 {
   // Constructor
   
-  fDetectors = new TList;
 }
 
 //_____________________________________________________________________________
-THaApparatus::THaApparatus( ) : fDetectors(NULL)
+THaApparatus::THaApparatus( ) : fDetectors(nullptr)
 {
   // only for ROOT I/O
 }
@@ -47,7 +47,7 @@ THaApparatus::~THaApparatus()
 
   if (fDetectors) {
     fDetectors->Delete();
-    delete fDetectors; fDetectors=0;
+    delete fDetectors; fDetectors=nullptr;
   }
 }
 
@@ -67,14 +67,14 @@ Int_t THaApparatus::AddDetector( THaDetector* pdet, Bool_t quiet, Bool_t first )
   // The detector object must be allocated by the caller, but will be
   // deleted by the apparatus.
 
-  
-  THaDetector* pfound = 
-    static_cast<THaDetector*>( fDetectors->FindObject( pdet->GetName() ));
-  if( pfound ) {
+  if( !pdet )
+    return -1;
+
+  if( fDetectors->FindObject(pdet->GetName()) ) {
     if( !quiet )
       Error("THaApparatus", "Detector with name %s already exists for this"
-	    " apparatus. Not added.", pdet->GetName() );
-    // If not adding, detete the detector since it was given to us
+                            " apparatus. Not added.", pdet->GetName() );
+    // If not adding, delete the detector since it was given to us
     // with the assumption that we will manage it
     delete pdet;
     return -1;
@@ -94,7 +94,7 @@ Int_t THaApparatus::Begin( THaRunBase* run )
   // Default Begin() for an apparatus: Begin() all our detectors
 
   TIter next(fDetectors);
-  while( THaAnalysisObject* obj = static_cast<THaAnalysisObject*>(next()) ) {
+  while( auto* obj = static_cast<THaAnalysisObject*>(next()) ) {
     obj->Begin(run);
   }
   return 0;
@@ -109,10 +109,10 @@ void THaApparatus::Clear( Option_t* opt )
   // Init() anyway, which will call the detectors' Clear() in turn
   if( !strchr(opt,'I') ) {
     TIter next(fDetectors);
-    while( THaDetector* theDetector = static_cast<THaDetector*>( next() )) {
+    while( auto* theDetector = static_cast<THaDetector*>( next() )) {
 #ifdef WITH_DEBUG
       if( fDebug>1 ) cout << "Clearing " << theDetector->GetName()
-			  << "... " << flush;
+                          << "... " << flush;
 #endif
       theDetector->Clear(opt);
 #ifdef WITH_DEBUG
@@ -128,10 +128,10 @@ Int_t THaApparatus::Decode( const THaEvData& evdata )
   // Call the Decode() method for all detectors defined for this apparatus.
 
   TIter next(fDetectors);
-  while( THaDetector* theDetector = static_cast<THaDetector*>( next() )) {
+  while( auto* theDetector = static_cast<THaDetector*>( next() )) {
 #ifdef WITH_DEBUG
     if( fDebug>1 ) cout << "Decoding " << theDetector->GetName()
-			<< "... " << flush;
+                        << "... " << flush;
 #endif
     theDetector->Decode( evdata );
 #ifdef WITH_DEBUG
@@ -147,7 +147,7 @@ Int_t THaApparatus::End( THaRunBase* run )
   // Default End() for an apparatus: End() all our detectors
 
   TIter next(fDetectors);
-  while( THaAnalysisObject* obj = static_cast<THaAnalysisObject*>(next()) ) {
+  while( auto* obj = static_cast<THaAnalysisObject*>(next()) ) {
     obj->End(run);
   }
   return 0;
@@ -159,7 +159,7 @@ THaDetector* THaApparatus::GetDetector( const char* name )
   // Find the named detector and return a pointer to it. 
   // This is useful for specialized processing.
 
-  return static_cast<THaDetector*>( fDetectors->FindObject( name ));
+  return dynamic_cast<THaDetector*>( fDetectors->FindObject( name ));
 }
 
 //_____________________________________________________________________________
@@ -184,35 +184,33 @@ THaAnalysisObject::EStatus THaApparatus::Init( const TDatime& run_time )
   // if any detector failed to initialize. Init() will be called for
   // all detectors, even if one or more detectors fail.
 
-  if( THaAnalysisObject::Init( run_time ) )
+  if( THaAnalysisObject::Init(run_time) )
     return fStatus;
 
   TIter next(fDetectors);
-  TObject* obj;
-
-  while( (obj = next()) ) {
-    if( !obj->IsA()->InheritsFrom("THaDetector")) {
+  while( TObject* obj = next() ) {
+    auto* theDetector = dynamic_cast<THaDetector*>( obj );
+    if( !theDetector ) {
       Error( Here("Init()"), "Detector %s (\"%s\") is not a THaDetector. "
-	     "Initialization of apparatus %s (\"%s\") failed.", 
-	     obj->GetName(), obj->GetTitle(), GetName(), GetTitle());
+                             "Initialization of apparatus %s (\"%s\") failed.",
+             obj->GetName(), obj->GetTitle(), GetName(), GetTitle());
       fStatus = kInitError;
     } else {
-      THaDetector* theDetector = static_cast<THaDetector*>( obj );
 #ifdef WITH_DEBUG
       if( fDebug>0 ) cout << "Initializing " 
-			  << theDetector->GetName() << "... "
-			  << flush;
+                          << theDetector->GetName() << "... "
+                          << flush;
 #endif
       theDetector->Init( run_time );
 #ifdef WITH_DEBUG
       if( fDebug>0 ) cout << "done.\n" << flush;
 #endif
       if( !theDetector->IsOK() ) {
-	Error( Here("Init()"), "While initializing apparatus %s (\"%s\") "
-	      "got error %d from detector %s (\"%s\")", 
-	      GetName(), GetTitle(), theDetector->Status(),
-	      theDetector->GetName(), theDetector->GetTitle());
-	fStatus = kInitError;
+        Error( Here("Init()"), "While initializing apparatus %s (\"%s\") "
+                               "got error %d from detector %s (\"%s\")",
+               GetName(), GetTitle(), theDetector->Status(),
+               theDetector->GetName(), theDetector->GetTitle());
+        fStatus = kInitError;
       }
     }
   }
@@ -237,10 +235,10 @@ void THaApparatus::SetDebugAll( Int_t level )
 {
   // Set debug level of this apparatus as well as all its detectors
 
-  SetDebug( level );
+  SetDebug(level);
 
   TIter next(fDetectors);
-  while( THaDetector* theDetector = static_cast<THaDetector*>( next() )) {
+  while( auto* theDetector = static_cast<THaDetector*>( next() )) {
     theDetector->SetDebug( level );
   }
 }

@@ -26,7 +26,8 @@ ClassImp(THaTotalShower)
 THaTotalShower::THaTotalShower( const char* name, const char* description,
 				THaApparatus* apparatus ) :
   THaPidDetector(name,description,apparatus), 
-  fShower(0), fPreShower(0), fMaxDx(0.0), fMaxDy(0.0)
+  fShower(nullptr), fPreShower(nullptr), fMaxDx(0.0), fMaxDy(0.0),
+  fE(kBig), fID(-1)
 {
   // Constructor. With this method, the subdetectors are created using
   // this detector's prefix followed by "sh" and "ps", respectively,
@@ -42,7 +43,8 @@ THaTotalShower::THaTotalShower( const char* name,
 				const char* description,
 				THaApparatus* apparatus ) :
   THaPidDetector(name,description,apparatus),
-  fShower(0), fPreShower(0), fMaxDx(0.0), fMaxDy(0.0)
+  fShower(nullptr), fPreShower(nullptr), fMaxDx(0.0), fMaxDy(0.0),
+  fE(kBig), fID(-1)
 {
   // Constructor. With this method, the subdetectors are created using
   // the given names 'shower_name' and 'preshower_name', and variable 
@@ -115,8 +117,7 @@ THaTotalShower::~THaTotalShower()
 
   delete fPreShower;
   delete fShower;
-  if( fIsSetup )
-    RemoveVariables();
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -130,13 +131,12 @@ THaAnalysisObject::EStatus THaTotalShower::Init( const TDatime& run_time )
   if( IsZombie() || !fShower || !fPreShower )
     return fStatus = kInitError;
 
-  EStatus status;
-  if( (status = THaPidDetector::Init( run_time )) ||
-      (status = fShower->Init( run_time )) ||
-      (status = fPreShower->Init( run_time )) )
-    return fStatus = status;
+  if( (fStatus = THaPidDetector::Init(run_time )) ||
+      (fStatus = fShower->Init(run_time )) ||
+      (fStatus = fPreShower->Init(run_time )) )
+    return fStatus;
 
-  return fStatus;
+  return fStatus = kOK;
 }
 
 //_____________________________________________________________________________
@@ -162,7 +162,7 @@ Int_t THaTotalShower::ReadDatabase( const TDatime& date )
   Double_t dxdy[2];
   DBRequest request[] = {
     { "max_dxdy",  dxdy, kDouble, 2 },
-    { 0 }
+    { nullptr }
   };
   Int_t err = LoadDB( fi, date, request, fPrefix );
   fclose(fi);
@@ -181,15 +181,12 @@ Int_t THaTotalShower::DefineVariables( EMode mode )
 {
   // Initialize global variables and lookup table for decoder
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
-
   // Register global variables
 
   RVarDef vars[] = {
     { "e",  "Energy (MeV) of largest cluster",    "fE" },
     { "id", "ID of Psh&Sh coincidence (1==good)", "fID" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( vars, mode );
 }
@@ -229,8 +226,8 @@ Int_t THaTotalShower::CoarseProcess( TClonesArray& tracks )
     fID = -1;
   else {
     fE = fShower->GetE() + fPreShower->GetE();
-    Float_t dx = fPreShower->GetX() - fShower->GetX();
-    Float_t dy = fPreShower->GetY() - fShower->GetY();
+    Data_t dx = fPreShower->GetX() - fShower->GetX();
+    Data_t dy = fPreShower->GetY() - fShower->GetY();
     if( TMath::Abs(dx) < fMaxDx && TMath::Abs(dy) < fMaxDy )
       fID = 1;
   }
@@ -258,7 +255,6 @@ void THaTotalShower::SetApparatus( THaApparatus* app )
   THaPidDetector::SetApparatus( app );
   fShower->SetApparatus( app );
   fPreShower->SetApparatus( app );
-  return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

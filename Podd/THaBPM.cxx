@@ -15,11 +15,11 @@
 #include "THaDetMap.h"
 #include "VarDef.h"
 #include "VarType.h"
-#include "TMath.h"
-
 #include <vector>
+#include <stdexcept>
+#include <cassert>
 
-static const UInt_t NCHAN = 4;
+static const Int_t NCHAN = 4;
 
 using namespace std;
 
@@ -57,7 +57,7 @@ Int_t THaBPM::ReadDatabase( const TDatime& date )
     // Read configuration parameters
     DBRequest config_request[] = {
       { "detmap",    &detmap,  kIntV },
-      { 0 }
+      { nullptr }
     };
     err = LoadDB( file, date, config_request, fPrefix );
   }
@@ -73,10 +73,10 @@ Int_t THaBPM::ReadDatabase( const TDatime& date )
     memset( offsets  , 0, sizeof( offsets ) );
     DBRequest calib_request[] = {
       { "calib_rot",   &fCalibRot },
-      { "pedestals",   pedestals, kDouble, NCHAN, 1 },
-      { "rotmatrix",   rotations, kDouble, NCHAN, 1 },
-      { "offsets"  ,   offsets,   kDouble, 2    , 1 },
-      { 0 }
+      { "pedestals",   pedestals, kDouble, NCHAN, true },
+      { "rotmatrix",   rotations, kDouble, NCHAN, true },
+      { "offsets"  ,   offsets,   kDouble, 2    , true },
+      { nullptr }
     };
     err = LoadDB( file, date, calib_request, fPrefix );
   }
@@ -99,14 +99,9 @@ Int_t THaBPM::ReadDatabase( const TDatime& date )
 //_____________________________________________________________________________
 Int_t THaBPM::DefineVariables( EMode mode )
 {
-  // Initialize global variables and lookup table for decoder
-
-
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
+  // Initialize global variables
 
   // Register variables in global list
-
   RVarDef vars[] = {
     { "rawcur.1", "current in antenna 1", "GetRawSignal0()"},
     { "rawcur.2", "current in antenna 2", "GetRawSignal1()"},
@@ -117,12 +112,10 @@ Int_t THaBPM::DefineVariables( EMode mode )
     { "z", "reconstructed z-position", "fPosition.fZ"},
     { "rotpos1", "position in bpm system","GetRotPosX()"},
     { "rotpos2", "position in bpm system","GetRotPosY()"},
-    { 0 }
+    { nullptr }
   };
-    
 
   return DefineVarsFromList( vars, mode );
-
 }
 
 //_____________________________________________________________________________
@@ -130,8 +123,7 @@ THaBPM::~THaBPM()
 {
   // Destructor. Remove variables from global list.
 
-  if( fIsSetup )
-    RemoveVariables();
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -139,94 +131,96 @@ void THaBPM::Clear( Option_t* opt )
 {
   // Reset per-event data.
   THaBeamDet::Clear(opt);
-  fPosition.SetXYZ(0.,0.,-10000.);
-  fDirection.SetXYZ(0.,0.,1.);
-  for( UInt_t k=0; k<NCHAN; ++k ) {
-    fRawSignal(k)=-1;
-    fCorSignal(k)=-1;
+  fPosition.SetXYZ(0., 0., -10000.);
+  fDirection.SetXYZ(0., 0., 1.);
+  for( Int_t k = 0; k < NCHAN; ++k ) {
+    fRawSignal(k) = -1;
+    fCorSignal(k) = -1;
   }
+  fRotPos(0) = fRotPos(1) = 0.0;
 }
 
 //_____________________________________________________________________________
 Int_t THaBPM::Decode( const THaEvData& evdata )
 {
-
-  // clears the event structure
+  // Decode BPM
   // loops over all modules defined in the detector map
   // copies raw data into local variables
   // performs pedestal subtraction
 
-  const char* const here = "Decode()";
+  Int_t nfired = THaBeamDet::Decode(evdata);
 
-  UInt_t nfired = 0;
-  for (Int_t i = 0; i < fDetMap->GetSize(); i++ ){
-    THaDetMap::Module* d = fDetMap->GetModule( i );
-    for (Int_t j=0; j< evdata.GetNumChan( d->crate, d->slot ); j++) {
-      Int_t chan = evdata.GetNextChan( d->crate, d->slot, j);
-      if ((chan>=d->lo)&&(chan<=d->hi)) {
-	Int_t data = evdata.GetData( d->crate, d->slot, chan, 0 );
-	UInt_t k = d->first + ((d->reverse) ? d->hi - chan : chan - d->lo) -1;
-	if ((k<NCHAN)&&(fRawSignal(k)==-1)) {
-	  fRawSignal(k)= data;
-	  nfired++;
-	}
-	else {
-	  Warning( Here(here), "Illegal detector channel: %d", k );
-	}
-      }
-    }
-  }
-
-  if (nfired!=NCHAN) {
-    Warning( Here(here), "Number of fired Channels out of range. "
-	     "Setting beam position to nominal values");
-  }
-  else {
-    fCorSignal=fRawSignal;
-    fCorSignal-=fPedestals;
+  if( nfired == NCHAN ) {
+    fCorSignal = fRawSignal - fPedestals;
+  } else {
+    Warning(Here("Decode"), "Number of fired Channels out of range. "
+                            "Setting beam position to nominal values");
   }
 
   return 0;
 }
 
-//____________________________________________________
-//  
-Int_t THaBPM::Process( )
+//_____________________________________________________________________________
+bool THaBPM::CheckHitInfo( const DigitizerHitInfo_t& hitinfo ) const
 {
- 
-  // called by the beam apparaturs 
-  // uses the pedestal substracted signals from the antennas
+  Int_t k = hitinfo.lchan;
+  if( k >= NCHAN || fRawSignal(k) != -1 ) {
+    Warning(Here("Decode"), "Illegal detector channel %d", k);
+    return false;
+  }
+  return true;
+}
+
+//_____________________________________________________________________________
+OptUInt_t THaBPM::LoadData( const THaEvData& evdata,
+                            const DigitizerHitInfo_t& hitinfo )
+{
+  if( !CheckHitInfo(hitinfo) )
+    return nullopt;
+  return THaBeamDet::LoadData(evdata, hitinfo);
+}
+
+//_____________________________________________________________________________
+Int_t THaBPM::StoreHit( const DigitizerHitInfo_t& hitinfo, UInt_t data )
+{
+  // Store 'data' from single hit in channel 'hitinfo'. Called from Decode()
+
+  Int_t k = hitinfo.lchan;
+  assert(k >= 0 && k < NCHAN && fRawSignal(k) == -1); // else bug in LoadData
+
+  fRawSignal(k) = data;
+  return 0;
+}
+
+//_____________________________________________________________________________
+Int_t THaBPM::Process()
+{
+  // called by the beam apparatus
+  // uses the pedestal subtracted signals from the antennas
   // to get the position in the bpm coordinate system 
   // and uses the transformation matrix defined in the database
   // to transform it into the HCS
   // directions are not calculated, they are always set parallel to z
 
-  Double_t ap, am;
-
-  for( UInt_t k=0; k<NCHAN; k+=2 ) {
-    if( fCorSignal(k)+fCorSignal(k+1)!=0.0 ) {
-      ap=fCorSignal(k);
-      am=fCorSignal(k+1);
-      fRotPos(k/2)=fCalibRot*(ap-am)/(ap+am);
-    }
-    else {
-      fRotPos(k/2)=0.0;
+  for( Int_t k = 0; k < NCHAN; k += 2 ) {
+    Double_t ap = fCorSignal(k);
+    Double_t am = fCorSignal(k + 1);
+    if( ap + am != 0.0 ) {
+      fRotPos(k / 2) = fCalibRot * (ap - am) / (ap + am);
+    } else {
+      fRotPos(k / 2) = 0.0;
     }
   }
-
   TVectorD dum(fRotPos);
-
-  dum*=fRot2HCSPos;
-
+  dum *= fRot2HCSPos;
   fPosition.SetXYZ(
-		   dum(0)+fOrigin(0)+fOffset(0),
-		   dum(1)+fOrigin(1)+fOffset(1),
-		   fOrigin(2)
-		   );
+    dum(0) + fOrigin(0) + fOffset(0),
+    dum(1) + fOrigin(1) + fOffset(1),
+    fOrigin(2)
+  );
 
-  return 0 ;
+  return 0;
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 ClassImp(THaBPM)

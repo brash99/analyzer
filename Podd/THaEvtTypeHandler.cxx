@@ -10,13 +10,12 @@
 #include "THaCrateMap.h"
 #include "TMath.h"
 #include <iostream>
-#include <string>
-#include <sstream>
+#include <algorithm>
 
 using namespace std;
 
 THaEvtTypeHandler::THaEvtTypeHandler(const char* name, const char* description)
-  : THaAnalysisObject(name, description), fDebugFile(0)
+  : THaAnalysisObject(name, description), fDebugFile(nullptr)
 {
 }
 
@@ -28,11 +27,11 @@ THaEvtTypeHandler::~THaEvtTypeHandler()
   }
 }
 
-void THaEvtTypeHandler::AddEvtType(int evtype) {
+void THaEvtTypeHandler::AddEvtType( UInt_t evtype) {
   eventtypes.push_back(evtype);
 }
-  
-void THaEvtTypeHandler::SetEvtType(int evtype) {
+
+void THaEvtTypeHandler::SetEvtType( UInt_t evtype) {
   eventtypes.clear();
   AddEvtType(evtype);
 }
@@ -43,8 +42,8 @@ void THaEvtTypeHandler::EvPrint() const
   cout << "Hello !  THaEvtTypeHandler name =  "<<GetName()<<endl;
   cout << "    description "<<GetTitle()<<endl;
   cout << "    event types handled are "<<endl;
-  for (UInt_t i=0; i < eventtypes.size(); i++) {
-    cout << "    event type "<<eventtypes[i]<<endl;
+  for( int eventtype : eventtypes ) {
+    cout << "    event type "<<eventtype<<endl;
   }
   cout << "----------------- good bye ----------------- "<<endl;
 }
@@ -77,10 +76,12 @@ void THaEvtTypeHandler::EvDump(THaEvData *evdata) const
   }
 }
 
-THaAnalysisObject::EStatus THaEvtTypeHandler::Init(const TDatime&)
+THaAnalysisObject::EStatus THaEvtTypeHandler::Init(const TDatime& date)
 {
-  fStatus = kOK;
-  return kOK;
+//  fStatus = kOK;
+//  return kOK;
+  SetConfig("default"); // BCI: override ReadRunDatabase instead
+  return THaAnalysisObject::Init(date);
 }
 
 void THaEvtTypeHandler::SetDebugFile(const char *filename) {
@@ -89,19 +90,16 @@ void THaEvtTypeHandler::SetDebugFile(const char *filename) {
     fDebugFile->open(filename);
 }
 
-Bool_t THaEvtTypeHandler::IsMyEvent(Int_t evnum) const
+Bool_t THaEvtTypeHandler::IsMyEvent( UInt_t type ) const
 {
-  for (UInt_t i=0; i < eventtypes.size(); i++) {
-    if (evnum == eventtypes[i]) return kTRUE;
-  }
-
-  return kFALSE;
+  return any_of(eventtypes.begin(), eventtypes.end(),
+                [type](UInt_t evtype){ return type == evtype; });
 }
 
 //_____________________________________________________________________________
 void THaEvtTypeHandler::MakePrefix()
 {
-  THaAnalysisObject::MakePrefix( NULL );
+  THaAnalysisObject::MakePrefix( nullptr );
 }
 
 ClassImp(THaEvtTypeHandler)

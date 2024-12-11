@@ -16,18 +16,10 @@
 using namespace std;
 
 //_____________________________________________________________________________
-THaBeamModule::THaBeamModule()
-{
-  // Normal constructor.
-
-}
+THaBeamModule::THaBeamModule() = default;
 
 //_____________________________________________________________________________
-THaBeamModule::~THaBeamModule()
-{
-  // Destructor
-
-}
+THaBeamModule::~THaBeamModule() = default;
 
 //_____________________________________________________________________________
 const RVarDef* THaBeamModule::GetRVarDef()
@@ -47,12 +39,11 @@ const RVarDef* THaBeamModule::GetRVarDef()
     { "ph",   "Tangent phi angle",              "fBeamIfo.GetPhi()"},    
     { "pol",  "Beam polarization",              "fBeamIfo.fPol"},
     { "ok",   "Data valid status flag (1=ok)",  "fBeamIfo.fOK"},
-    { 0 }
+    { nullptr }
   };
 
   return vars;
 }
-
 
 //_____________________________________________________________________________
 ClassImp(THaBeamModule)

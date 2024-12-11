@@ -12,38 +12,37 @@
 #include "THaAnalysisObject.h"
 #include <vector>
 #include <fstream>
+#include <cassert>
 
 class THaEvtTypeHandler : public THaAnalysisObject {
 
 public:
-
    THaEvtTypeHandler(const char* name, const char* description);
    virtual ~THaEvtTypeHandler();
 
    virtual Int_t Analyze(THaEvData *evdata) = 0;
    virtual EStatus Init( const TDatime& run_time );
    virtual void EvPrint() const;
-   virtual Bool_t IsMyEvent(Int_t evnum) const;
+   virtual Bool_t IsMyEvent( UInt_t type ) const;
    virtual void EvDump(THaEvData *evdata) const;
-   virtual void SetDebugFile(std::ofstream *file) { if (file!=0) fDebugFile=file; };
+   virtual void SetDebugFile(std::ofstream *file) { if (file) fDebugFile=file; };
    virtual void SetDebugFile(const char *filename);
-   virtual void AddEvtType(int evtype);
-   virtual void SetEvtType(int evtype);
-   virtual Int_t GetNumTypes() { return eventtypes.size(); };
-   virtual Int_t GetEvtType() {
-     if (eventtypes.size()==0) return -1;
+   virtual void AddEvtType( UInt_t evtype );
+   virtual void SetEvtType( UInt_t evtype );
+   virtual UInt_t GetNumTypes() { return eventtypes.size(); };
+   virtual UInt_t GetEvtType() {
+     assert( !eventtypes.empty() );
      return eventtypes[0];
    }
-   virtual std::vector<Int_t> GetEvtTypes() { return eventtypes; };
+   virtual std::vector<UInt_t> GetEvtTypes() { return eventtypes; };
 
 protected:
-
-   std::vector<Int_t> eventtypes;
-   virtual void MakePrefix();
+   std::vector<UInt_t> eventtypes;
    std::ofstream *fDebugFile;
 
-private:
+   virtual void MakePrefix();
 
+private:
    THaEvtTypeHandler(const THaEvtTypeHandler &fh);
    THaEvtTypeHandler& operator=(const THaEvtTypeHandler &fh);
 

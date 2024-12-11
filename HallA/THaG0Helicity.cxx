@@ -31,36 +31,37 @@ THaG0Helicity::THaG0Helicity( const char* name, const char* description,
 			      THaApparatus* app ) : 
   THaHelicityDet( name, description, app ),
   fG0delay(kDefaultDelay), fEvtype(0), fTdavg(kDefaultTdavg), fTdiff(0.),
-  fT0(0.), fT9(0.), fT0T9(kFALSE), fQuad_calibrated(kFALSE),
-  fValidHel(kFALSE), fRecovery_flag(kTRUE),
+  fT0(0.), fT9(0.), fT0T9(false), fQuad_calibrated(false),
+  fValidHel(false), fRecovery_flag(true),
   fTlastquad(0), fTtol(kDefaultTtol), fQuad(0), 
   fFirstquad(0), fLastTimestamp(0.0), fTimeLastQ1(0.0),
   fT9count(0), fPredicted_reading(0), fQ1_reading(0),
   fPresent_helicity(kUnknown), fSaved_helicity(kUnknown),
   fQ1_present_helicity(kUnknown), fMaxMissed(kDefaultMissQ),
-  fNqrt(0), fHisto(NULL), fNB(0), fIseed(0), fIseed_earlier(0),
+  fHbits{}, // zero-initialize array
+  fNqrt(0), fHisto(nullptr), fNB(0), fIseed(0), fIseed_earlier(0),
   fInquad(0), fTET9Index(0), fTELastEvtQrt(-1), fTELastEvtTime(-1.),
   fTELastTime(-1.), fTEPresentReadingQ1(-1), fTEStartup(3), fTETime(-1.),
-  fTEType9(kFALSE), fManuallySet(0)
+  fTEType9(false), fManuallySet(0), fDelayedQrt(true)
 {
-  memset(fHbits, 0, sizeof(fHbits));
 }
 
 //_____________________________________________________________________________
 THaG0Helicity::THaG0Helicity()
   : THaHelicityDet(),
     fG0delay(kDefaultDelay), fEvtype(0), fTdavg(kDefaultTdavg), fTdiff(0.),
-    fT0(0.), fT9(0.), fT0T9(kFALSE), fQuad_calibrated(kFALSE),
-    fValidHel(kFALSE), fRecovery_flag(kTRUE),
+    fT0(0.), fT9(0.), fT0T9(false), fQuad_calibrated(false),
+    fValidHel(false), fRecovery_flag(true),
     fTlastquad(0), fTtol(kDefaultTtol), fQuad(0),
     fFirstquad(0), fLastTimestamp(0.0), fTimeLastQ1(0.0),
     fT9count(0), fPredicted_reading(0), fQ1_reading(0),
     fPresent_helicity(kUnknown), fSaved_helicity(kUnknown),
     fQ1_present_helicity(kUnknown), fMaxMissed(kDefaultMissQ),
-    fNqrt(0), fHisto(NULL), fNB(0), fIseed(0), fIseed_earlier(0),
+    fHbits{}, // zero-initialize array
+    fNqrt(0), fHisto(nullptr), fNB(0), fIseed(0), fIseed_earlier(0),
     fInquad(0), fTET9Index(0), fTELastEvtQrt(-1), fTELastEvtTime(-1.),
     fTELastTime(-1.), fTEPresentReadingQ1(-1), fTEStartup(3), fTETime(-1.),
-    fTEType9(kFALSE), fManuallySet(0)
+    fTEType9(false), fManuallySet(0), fDelayedQrt(true)
 {
   // Default constructor for ROOT I/O
 }
@@ -68,7 +69,7 @@ THaG0Helicity::THaG0Helicity()
 //_____________________________________________________________________________
 THaG0Helicity::~THaG0Helicity() 
 {
-  DefineVariables( kDelete );
+  RemoveVariables();
 
   delete fHisto;
 }
@@ -78,10 +79,10 @@ Int_t THaG0Helicity::DefineVariables( EMode mode )
 {
   // Initialize global variables
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-
   // Define standard variables from base class
-  THaHelicityDet::DefineVariables( mode );
+  Int_t ret = THaHelicityDet::DefineVariables( mode );
+  if( ret )
+    return ret;
 
   const RVarDef var[] = {
     { "qrt",       "qrt from ROC",                 "fQrt" },
@@ -93,7 +94,7 @@ Int_t THaG0Helicity::DefineVariables( EMode mode )
     { "timestamp", "Timestamp from ROC",           "fTimestamp" },
     { "validtime", "validtime flag",               "fValidTime" },
     { "validHel",  "validHel flag",                "fValidHel" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( var, mode );
 }
@@ -125,11 +126,11 @@ Int_t THaG0Helicity::ReadDatabase( const TDatime& date )
   Int_t    missqrt = kDefaultMissQ;
 
   DBRequest req[] = {
-    { "delay",    &delay,      kInt,    0, 1, -2 },
-    { "tdavg",    &tdavg,      kDouble, 0, 1, -2 },
-    { "ttol",     &ttol,       kDouble, 0, 1, -2 },
-    { "missqrt",  &missqrt,    kInt,    0, 1, -2 },
-    { 0 }
+    { "delay",    &delay,      kInt,    0, true, -2 },
+    { "tdavg",    &tdavg,      kDouble, 0, true, -2 },
+    { "ttol",     &ttol,       kDouble, 0, true, -2 },
+    { "missqrt",  &missqrt,    kInt,    0, true, -2 },
+    { nullptr }
   };
   st = LoadDB( file, date, req );
   fclose(file);
@@ -173,7 +174,7 @@ void THaG0Helicity::Clear( Option_t* opt )
   fLastTimestamp = fTimestamp;
   THaG0HelicityReader::Clear(opt);
   fEvtype = fQuad = 0;
-  fValidHel = kFALSE;
+  fValidHel = false;
   fPresent_helicity = kUnknown;
 }
 
@@ -297,7 +298,7 @@ void THaG0Helicity::TimingEvent()
   static const char* const here = "TimingEvent";
 
   if (fEvtype == 9) {
-    fTEType9 = kTRUE;
+    fTEType9 = true;
     fTETime = fTimestamp;
   }
   else if (fQrt && !fTELastEvtQrt
@@ -307,7 +308,7 @@ void THaG0Helicity::TimingEvent()
     // and the previous event (if that's not to far in the past)
     // or just the timestamp of the QRT==1 event (if it is).
     // This is lousy accuracy but better than nothing.
-    fTEType9 = kFALSE;
+    fTEType9 = false;
     if (fTELastEvtTime>0.
 	&& (fTimestamp - fTELastEvtTime) < 0.1 * fTdavg) {
       fTETime = (fTimestamp + fTELastEvtTime) * 0.5;
@@ -330,7 +331,7 @@ void THaG0Helicity::TimingEvent()
       // Look for missed timing events
       Double_t t9diff = 0.25 * fTdavg;
       Double_t tdiff = fTETime - fTELastTime;
-      Int_t nt9miss = (Int_t) (tdiff / t9diff - 0.5);
+      auto nt9miss = static_cast<Int_t>(tdiff / t9diff - 0.5);
       fTET9Index += nt9miss;
       if (fTET9Index > 3) {
 	fTEPresentReadingQ1 = -1;
@@ -366,8 +367,6 @@ void THaG0Helicity::TimingEvent()
   fTELastTime = fTETime;
   fTELastEvtQrt = fQrt;
   fTELastEvtTime = fTimestamp;
-
-  return;
 }
 
 //_____________________________________________________________________________
@@ -377,13 +376,9 @@ void THaG0Helicity::QuadCalib()
 
   const char* const here = "QuadCalib";
 
-  // Is the Qrt signal delayed such that the evt9 at the beginning of
-  // a Qrt does NOT contain the qrt flag?
-  const int delayed_qrt = 1; 
-
   if (fEvtype == 9) {
     fT9count += 1;
-    if ( delayed_qrt && fQrt ) {
+    if ( fDelayedQrt && fQrt ) {
       // don't record this time     
     } else {
       fT9 = fTimestamp; // this sets the timing reference.
@@ -403,7 +398,7 @@ void THaG0Helicity::QuadCalib()
       fTdiff > (1.25*fTdavg + fTtol)) {
     // Try a recovery.  Use time to flip helicity by the number of
     // missed quads, unless this are more than 30 (~1 sec).  
-    Int_t nqmiss = (Int_t)(fTdiff/fTdavg);
+    auto nqmiss = static_cast<Int_t>(fTdiff/fTdavg);
     if (fDebug >= 1)
       Info( Here(here), "Recovering large DT, nqmiss = %d "
 	    "at timestamp %f, tdiff %f", nqmiss, fTimestamp, fTdiff );
@@ -412,11 +407,11 @@ void THaG0Helicity::QuadCalib()
 	if (fQrt && fT9 > 0 && fTimestamp - fT9 < 8*fTdavg) {
 	  fT0 = TMath::Floor((fTimestamp-fT9)/(.25*fTdavg))
 	    *(.25*fTdavg) + fT9;
-	  fT0T9 = kTRUE;
+	  fT0T9 = true;
 	  }
 	else {
 	  fT0 += fTdavg;
-	  fT0T9 = kFALSE;
+	  fT0T9 = false;
 	}
 	QuadHelicity(1);
 	fNqrt++;
@@ -435,14 +430,14 @@ void THaG0Helicity::QuadCalib()
 	       "or uninitialized" );
       fNqrt += nqmiss; // advance counter for later check
       fT0 += nqmiss*fTdavg;
-      fRecovery_flag = kTRUE;    // clear & recalibrate the predictor
-      fQuad_calibrated = kFALSE;
+      fRecovery_flag = true;    // clear & recalibrate the predictor
+      fQuad_calibrated = false;
       fFirstquad = 1;
     }
   }
   if (fQrt && fFirstquad == 1) {
     fT0 = fTimestamp;
-    fT0T9 = kFALSE;
+    fT0T9 = false;
     fFirstquad = 0;
   }
 
@@ -482,13 +477,13 @@ void THaG0Helicity::QuadCalib()
     if (fT9 > 0 && fTimestamp - fT9 < 8*fTdavg) {
       fT0 = TMath::Floor((fTimestamp-fT9)/(.25*fTdavg))
 	*(.25*fTdavg) + fT9;
-      fT0T9 = kTRUE;
+      fT0T9 = true;
     }
     else {
       fT0 = (fLastTimestamp == 0 
 	     || fTimestamp - fLastTimestamp > 0.1*fTdavg)
 	? fTimestamp : 0.5 * (fTimestamp + fLastTimestamp);
-      fT0T9 = kFALSE;
+      fT0T9 = false;
     }
     fQ1_reading = fPresentReading;
     QuadHelicity();
@@ -505,13 +500,13 @@ void THaG0Helicity::QuadCalib()
 	cout << "Qrt " << fQrt << "  Tdiff "<<fTdiff;
 	cout<<"  gate "<<fGate<<" evtype "<<fEvtype<<endl;
       }
-      fRecovery_flag = kTRUE;    // clear & recalibrate the predictor
-      fQuad_calibrated = kFALSE;
+      fRecovery_flag = true;    // clear & recalibrate the predictor
+      fQuad_calibrated = false;
       fFirstquad = 1;
       fPresent_helicity = kUnknown;
     }
     if (fDebug>=3) {
-      Info(Here(here), "%5d  %1d  %1d %1d %2d  %10.0f  %10.0f  %10.0f",fNqrt,
+      Info(Here(here), "%5d  %1u  %1d %1d %2d  %10.0f  %10.0f  %10.0f",fNqrt,
 	 fEvtype,fQrt,fQ1_reading,fQ1_present_helicity,fTimestamp,fT0,fTdiff);
     }
     if (fDebug==-1) { // Only used during an initial calibration.
@@ -522,7 +517,6 @@ void THaG0Helicity::QuadCalib()
     }
   }
   fTdiff = fTimestamp - fT0;
-  return;
 }
 
 
@@ -535,7 +529,7 @@ void THaG0Helicity::LoadHelicity()
   static const char* const here = "LoadHelicity";
 
   if ( fQuad_calibrated ) 
-    fValidHel = kTRUE;
+    fValidHel = true;
   if ( !fQuad_calibrated  || !fGate ) {
     fPresent_helicity = kUnknown;
     return;
@@ -602,7 +596,6 @@ void THaG0Helicity::LoadHelicity()
     cout << "   Helicity "<<fPresent_helicity<<endl;
   }
   fQuad = fInquad;
-  return;
 }
 
 //_____________________________________________________________________________
@@ -618,7 +611,7 @@ void THaG0Helicity::QuadHelicity( Int_t cond )
     fNB = 0;
     fSaved_helicity = kUnknown;
   }
-  fRecovery_flag = kFALSE;
+  fRecovery_flag = false;
 
   fPresent_helicity = fSaved_helicity;
   // Make certain a given qrt is used only once UNLESS
@@ -634,7 +627,7 @@ void THaG0Helicity::QuadHelicity( Int_t cond )
   if (fNB < kNbits) {
     fHbits[fNB] = fPresentReading;
     fNB++;
-    fQuad_calibrated = kFALSE;
+    fQuad_calibrated = false;
   } else if (fNB == kNbits) {   // Have finished loading
     fIseed_earlier = GetSeed();
     fIseed = fIseed_earlier;
@@ -655,7 +648,7 @@ void THaG0Helicity::QuadHelicity( Int_t cond )
       fPresent_helicity = RanBit(1);
     fNB++;
     fSaved_helicity = fPresent_helicity;
-    fQuad_calibrated = kTRUE;
+    fQuad_calibrated = true;
   } else {
     fPredicted_reading = RanBit(0);
     fSaved_helicity = fPresent_helicity = RanBit(1);
@@ -669,10 +662,9 @@ void THaG0Helicity::QuadHelicity( Int_t cond )
 	   <<endl;
       if (CompHel()) cout << "HELICITY OK "<<endl;
     }
-    fQuad_calibrated = kTRUE;
+    fQuad_calibrated = true;
 
   }
-  return;
 }
 
 //_____________________________________________________________________________
@@ -734,10 +726,10 @@ Bool_t THaG0Helicity::CompHel()
   // The raw data are 0's and 1's which compare to predictions of
   // -1 and +1.  A prediction of 0 occurs when there is no gate.
   if (fPresentReading == 0 && 
-      fPredicted_reading == kMinus) return kTRUE;
+      fPredicted_reading == kMinus) return true;
   if (fPresentReading == 1 && 
-      fPredicted_reading == kPlus) return kTRUE;
-  return kFALSE;
+      fPredicted_reading == kPlus) return true;
+  return false;
 }
 
 ClassImp(THaG0Helicity)

@@ -15,9 +15,7 @@
 #include "THaSpectrometer.h"
 #include "THaTrack.h"
 #include "THaTrackInfo.h"
-#include "THaVertexModule.h"
 #include "TMath.h"
-#include "TVector3.h"
 
 using namespace std;
 
@@ -28,7 +26,7 @@ THaTrackEloss::THaTrackEloss( const char* name,
 			      Double_t particle_mass,
 			      Int_t hadron_charge ) :
   THaElossCorrection(name,description,input_tracks,particle_mass,
-		     hadron_charge), fTrackModule(NULL)
+		     hadron_charge), fTrackModule(nullptr)
 {
   // Normal constructor.
 
@@ -40,7 +38,7 @@ THaTrackEloss::~THaTrackEloss()
 {
   // Destructor
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -101,7 +99,7 @@ THaAnalysisObject::EStatus THaTrackEloss::Init( const TDatime& run_time )
   fTrkIfo.SetSpectrometer( spectro );
 
   // Standard initialization. Calls this object's DefineVariables() and
-  // reads meterial properties from the run database.
+  // reads material properties from the run database.
   THaElossCorrection::Init( run_time );
 
   return fStatus;
@@ -112,8 +110,9 @@ Int_t THaTrackEloss::DefineVariables( EMode mode )
 {
   // Define/delete global variables.
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  THaElossCorrection::DefineVariables( mode );
+  Int_t ret = THaElossCorrection::DefineVariables( mode );
+  if( ret )
+    return ret;
 
   return DefineVarsFromList( THaTrackingModule::GetRVarDef(), mode );
 }

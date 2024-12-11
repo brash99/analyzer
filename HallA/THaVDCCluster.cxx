@@ -19,15 +19,14 @@
 using namespace VDC;
 using namespace std;
 
-const Double_t VDC::kBig = 1e38;  // Arbitrary large value
 static const Int_t kDefaultNHit = 16;
 
 //_____________________________________________________________________________
 THaVDCCluster::THaVDCCluster( THaVDCPlane* owner )
-  : fPlane(owner), fPointPair(0), fTrack(0), fTrkNum(0),
+  : fPlane(owner), fPointPair(nullptr), fTrack(nullptr), fTrkNum(0),
     fSlope(kBig), fLocalSlope(kBig), fSigmaSlope(kBig),
     fInt(kBig), fSigmaInt(kBig), fT0(kBig), fSigmaT0(kBig),
-    fPivot(0), fTimeCorrection(0),
+    fPivot(nullptr), fTimeCorrection(0),
     fFitOK(false), fChi2(kBig), fNDoF(0.0), fClsBeg(kMaxInt), fClsEnd(-1)
 {
   // Constructor
@@ -57,10 +56,10 @@ void THaVDCCluster::Clear( Option_t* )
 
   ClearFit();
   fHits.clear();
-  fPivot   = 0;
-  fPlane   = 0;
-  fPointPair = 0;
-  fTrack   = 0;
+  fPivot   = nullptr;
+  fPlane   = nullptr;
+  fPointPair = nullptr;
+  fTrack   = nullptr;
   fTrkNum  = 0;
   fClsBeg  = kMaxInt-1;
   fClsEnd  = -1;
@@ -93,7 +92,7 @@ Int_t THaVDCCluster::Compare( const TObject* obj ) const
   if( !obj || IsA() != obj->IsA() )
     return -1;
 
-  const THaVDCCluster* rhs = static_cast<const THaVDCCluster*>( obj );
+  const auto* rhs = static_cast<const THaVDCCluster*>( obj );
   if( GetPivotWireNum() < rhs->GetPivotWireNum() )
     return -1;
   if( GetPivotWireNum() > rhs->GetPivotWireNum() )
@@ -115,9 +114,9 @@ void THaVDCCluster::EstTrackParameters()
     return;
 
   // Find pivot
-  Double_t time = 0, minTime = 1000;  // drift-times in seconds
+  Double_t minTime = 1000;  // drift-times in seconds
   for (int i = 0; i < GetSize(); i++) {
-    time = fHits[i]->GetTime();
+    Double_t time = fHits[i]->GetTime();
     if (time < minTime) { // look for lowest time
       minTime = time;
       fPivot = fHits[i];
@@ -218,7 +217,7 @@ void THaVDCCluster::FitTrack( EMode mode )
   //
   // kSimple:    Linear fit, ignore t0 and multihits
   // kWeighted:  Linear fit with weights, ignore t0
-  // kT0:        Fit t0, but ignore mulithits
+  // kT0:        Fit t0, but ignore multihits
 
   switch( mode ) {
   case kSimple:
@@ -252,9 +251,6 @@ void THaVDCCluster::FitSimpleTrack( Bool_t weighted )
 	     // Do keep current values of slope and intercept
   }
 
-  Double_t m, sigmaM;  // Slope, St. Dev. in slope
-  Double_t b, sigmaB;  // Intercept, St. Dev in Intercept
-
   fCoord.clear();
 
   Double_t bestFit = 0.0;
@@ -276,7 +272,7 @@ void THaVDCCluster::FitSimpleTrack( Bool_t weighted )
 
     Double_t x = fHits[i]->GetPos();
     Double_t y = fHits[i]->GetDist() + fTimeCorrection;
-    Double_t w;
+    Double_t w = 1.0;
     if( weighted ) {
       w = fHits[i]->GetdDist();
       // the hit will be ignored if the uncertainty is < 0
@@ -284,28 +280,22 @@ void THaVDCCluster::FitSimpleTrack( Bool_t weighted )
 	w = 1./(w*w); // sigma^-2 is the weight
       else
 	w = -1.;
-    } else {
-      w = 1.0;
     }
     fCoord.push_back( FitCoord_t(x,y,w) );
   }
 
   const Int_t nSignCombos = 2; //Number of different sign combinations
   for (int i = 0; i < nSignCombos; i++) {
-    Double_t F, sigmaF2;  // intermediate slope and St. Dev.**2
-    Double_t G, sigmaG2;  // intermediate intercept and St. Dev.**2
-    Double_t sigmaFG;     // correlated uncertainty
-
     Double_t sumX  = 0.0;   //Positions
-    Double_t sumXW = 0.0;
+//    Double_t sumXW = 0.0;
     Double_t sumXX = 0.0;
     Double_t sumY  = 0.0;   //Drift distances
     Double_t sumXY = 0.0;
-    Double_t sumYY = 0.0;
-    Double_t sumXXW= 0.0;
+//    Double_t sumYY = 0.0;
+//    Double_t sumXXW= 0.0;
 
     Double_t W = 0.0;
-    Double_t WW= 0.0;
+//    Double_t WW= 0.0;
 
     if (i == 0)
       for (int j = pivotNum+1; j < GetSize(); j++)
@@ -320,34 +310,40 @@ void THaVDCCluster::FitSimpleTrack( Bool_t weighted )
 
       if (w <= 0) continue;
       W     += w;
-      WW    += w*w;
+//      WW    += w*w;
       sumX  += x * w;
-      sumXW += x * w * w;
+//      sumXW += x * w * w;
       sumXX += x * x * w;
-      sumXXW+= x * x * w * w;
+//      sumXXW+= x * x * w * w;
       sumY  += y * w;
       sumXY += x * y * w;
-      sumYY += y * y * w;
+//      sumYY += y * y * w;
     }
 
     // Standard formulae for linear regression (see Bevington)
     Double_t Delta = W * sumXX - sumX * sumX;
 
-    F  = (sumXX * sumY - sumX * sumXY) / Delta;
-    G  = (W * sumXY - sumX * sumY) / Delta;
-    sigmaF2 = ( sumXX / Delta );
-    sigmaG2 = ( W / Delta );
-    sigmaFG = ( -sumX / Delta );
+    // intermediate slope and St. Dev.**2
+    Double_t F  = (sumXX * sumY - sumX * sumXY) / Delta;
+    Double_t sigmaF2 = ( sumXX / Delta );
+    // intermediate intercept and St. Dev.**2
+    Double_t G  = (W * sumXY - sumX * sumY) / Delta;
+    Double_t sigmaG2 = ( W / Delta );
+
+    // correlated uncertainty
+    Double_t sigmaFG = ( -sumX / Delta );
 
     // calculate chi2 for the track given this slope and intercept
     chi2_t chi2 = CalcChisquare( G, F, 0 );
 
-    m  =   1/G;
-    b  = - F/G;
+    // Slope, St. Dev. in slope
+    Double_t m  =   1/G;
+    Double_t sigmaM = m * m * TMath::Sqrt( sigmaG2 );
+    // Intercept, St. Dev in Intercept
+    Double_t b  = - F/G;
+    Double_t sigmaB = TMath::Sqrt(sigmaF2 + F * F / (G * G) * sigmaG2
+                                  - 2 * F / G * sigmaFG) / TMath::Abs(G);
 
-    sigmaM = m * m * TMath::Sqrt( sigmaG2 );
-    sigmaB = TMath::Sqrt( sigmaF2 + F*F/(G*G)*sigmaG2 - 2*F/G*sigmaFG ) /
-      TMath::Abs(G);
 
     // scale the uncertainty of the fit parameters based upon the
     // quality of the fit. This really should not be necessary if
@@ -392,7 +388,7 @@ Int_t THaVDCCluster::LinearClusterFitWithT0()
   // a significant negative offset d0.
   //
   // The results, m, b, and d0, are converted to the "slope" and "intercept"
-  // of the cluster geometery, where slope = 1/m and intercept = -b/m.
+  // of the cluster geometry, where slope = 1/m and intercept = -b/m.
   // d0 is simply converted to time units to give t0, using the asymptotic
   // drift velocity.
 
@@ -403,25 +399,18 @@ Int_t THaVDCCluster::LinearClusterFitWithT0()
 		// Do keep current values of slope and intercept
   }
 
-  Double_t m, sigmaM;   // Slope, St. Dev. in slope
-  Double_t b, sigmaB;   // Intercept, St. Dev in Intercept
-  Double_t d0, sigmaD0;
-
-  sigmaM = sigmaB = sigmaD0 = 0;
+  Double_t sigmaM = 0, sigmaB = 0, sigmaD0 = 0;
 
   fCoord.clear();
 
   //--- Copy hit data into local arrays
-  Int_t ihit, incr, ilast = GetSize()-1;
+  Int_t ihit = 0, incr = 1, ilast = GetSize()-1;
   // Ensure that the first element of the local arrays always corresponds
   // to the wire with the smallest x position
   bool reversed = ( fPlane->GetWSpac() < 0 );
   if( reversed ) {
     ihit = ilast;
     incr = -1;
-  } else {
-    ihit = 0;
-    incr = 1;
   }
   for( Int_t i = 0; i < GetSize(); ihit += incr, ++i ) {
     assert( ihit >= 0 && ihit < GetSize() );
@@ -456,6 +445,7 @@ Int_t THaVDCCluster::LinearClusterFitWithT0()
       fCoord[ipivot].s *= -1;
 
     // Do the fit
+    Double_t m = kBig, b = kBig, d0 = kBig;
     Linear3DFit( m, b, d0 );
 
     // calculate chi2 for the track given this slope,
@@ -503,7 +493,7 @@ void THaVDCCluster::Linear3DFit( Double_t& m, Double_t& b, Double_t& d0 ) const
   Double_t sumX   = 0.0;   //Positions
   Double_t sumXX  = 0.0;
   Double_t sumD   = 0.0;   //Drift distances
-  Double_t sumXD  = 0.0;
+//  Double_t sumXD  = 0.0;
   Double_t sumS   = 0.0;   //sign vector
   Double_t sumSX  = 0.0;
   Double_t sumSD  = 0.0;
@@ -528,7 +518,7 @@ void THaVDCCluster::Linear3DFit( Double_t& m, Double_t& b, Double_t& d0 ) const
     sumX   += x * w;
     sumXX  += x * x * w;
     sumD   += d * w;
-    sumXD  += x * d * w;
+//    sumXD  += x * d * w;
     sumS   += s * w;
     sumSX  += s * x * w;
     sumSD  += s * d * w;
@@ -766,7 +756,7 @@ void THaVDCCluster::Print( Option_t* ) const
     cout << "Global residuals = ";
     DoCalcChisquare( chi2, nhits, fSlope, true );
     cout << endl;
-    cout << "Local/global chi2 = " << lchi2 << ", " << chi2 << endl;;
+    cout << "Local/global chi2 = " << lchi2 << ", " << chi2 << endl;
   }
 }
 

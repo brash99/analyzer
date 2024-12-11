@@ -13,7 +13,6 @@
 
 #include "THaADCHelicity.h"
 #include "THaEvData.h"
-#include "THaDetMap.h"
 #include "VarDef.h"
 #include <iostream>
 #include <vector>
@@ -27,8 +26,8 @@ THaADCHelicity::THaADCHelicity( const char* name, const char* description,
 				THaApparatus* app ) : 
   THaHelicityDet( name, description, app ),
   fADC_hdata(kBig), fADC_Gate(kBig), fADC_Hel(kUnknown), 
-  fThreshold(kDefaultThreshold), fIgnoreGate(kFALSE),
-  fInvertGate(kFALSE), fNchan(0)
+  fThreshold(kDefaultThreshold), fIgnoreGate(false),
+  fInvertGate(false), fNchan(0)
 {
   // Constructor
 }
@@ -36,7 +35,7 @@ THaADCHelicity::THaADCHelicity( const char* name, const char* description,
 //____________________________________________________________________
 THaADCHelicity::~THaADCHelicity() 
 {
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -44,14 +43,15 @@ Int_t THaADCHelicity::DefineVariables( EMode mode )
 {
   // Initialize global variables
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  THaHelicityDet::DefineVariables( mode );
+  Int_t ret = THaHelicityDet::DefineVariables( mode );
+  if( ret )
+    return ret;
 
   const RVarDef var[] = {
     { "adc",       "Helicity ADC raw data",  "fADC_hdata" },
     { "gate_adc",  "Gate ADC raw data",      "fADC_Gate" },
     { "adc_hel",   "Beam helicity from ADC", "fADC_Hel" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( var, mode );
 }
@@ -74,12 +74,12 @@ Int_t THaADCHelicity::ReadDatabase( const TDatime& date )
   fThreshold  = kDefaultThreshold;
   Int_t ignore_gate = -1, invert_gate = 0;
   const  DBRequest request[] = {
-    { "helchan",      &heldef,       kIntV,   0, 0, -2 },
-    { "gatechan",     &gatedef,      kIntV,   0, 1, -2 },
-    { "threshold",    &fThreshold,   kDouble, 0, 1, -2 },
-    { "ignore_gate",  &ignore_gate,  kInt,    0, 1, -2 },
-    { "invert_gate",  &invert_gate,  kInt,    0, 1, -2 },
-    { 0 }
+    { "helchan",      &heldef,       kIntV,   0, false, -2 },
+    { "gatechan",     &gatedef,      kIntV,   0, true,  -2 },
+    { "threshold",    &fThreshold,   kDouble, 0, true,  -2 },
+    { "ignore_gate",  &ignore_gate,  kInt,    0, true,  -2 },
+    { "invert_gate",  &invert_gate,  kInt,    0, true,  -2 },
+    { nullptr }
   };
   // Database keys are prefixed with this detector's name, not apparatus.name
   err = LoadDB( file, date, request, fPrefix );
@@ -96,7 +96,7 @@ Int_t THaADCHelicity::ReadDatabase( const TDatime& date )
   // Missing gate channel implies ignoring gate unless explicitly set
   if( gatedef.empty() ) {
     if( ignore_gate < 0 )
-      fIgnoreGate = kTRUE;
+      fIgnoreGate = true;
     else {
       Error( Here(here), "Missing gate data channel definition gatechan. "
 	     "Fix database." );
@@ -157,13 +157,12 @@ Int_t THaADCHelicity::Decode( const THaEvData& evdata )
   Int_t ret = 0;
   bool gate_high = false;
 
-  for( Int_t i = 0; i < fNchan; ++i ) {
-    Int_t roc = fAddr[i].roc, slot = fAddr[i].slot, chan = fAddr[i].chan;
+  for( UInt_t i = 0; i < fNchan; ++i ) {
+    UInt_t roc = fAddr[i].roc, slot = fAddr[i].slot, chan = fAddr[i].chan;
     if ( !evdata.GetNumHits( roc, slot, chan ))
       continue;
 
-    Double_t data = 
-      static_cast<Double_t>(evdata.GetData( roc, slot, chan, 0 ));
+    auto data = static_cast<Double_t>(evdata.GetData( roc, slot, chan, 0 ));
 
     if (fDebug >= 3) {
       cout << "crate "<<roc<<"   slot "<<slot<<"   chan "
@@ -183,11 +182,13 @@ Int_t THaADCHelicity::Decode( const THaEvData& evdata )
       fADC_Gate = data;
       gate_high = fInvertGate ? (data < fThreshold) : (data >= fThreshold);
       break;
+    default:
+      break;
     }
   }
 
   // Logic: if gate==0 helicity remains unknown. If gate==1 
-  // (or we are ingoring the gate) then helicity is determined by 
+  // (or we are ignoring the gate) then helicity is determined by
   // the helicity bit.
   if( gate_high || fIgnoreGate ) {
     fADC_Hel = ( fADC_hdata >= fThreshold ) ? kPlus : kMinus;

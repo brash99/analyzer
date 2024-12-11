@@ -15,14 +15,13 @@
 #include "THaBeam.h"
 #include "THaVertexModule.h"
 #include "TMath.h"
-#include "TVector3.h"
 
 using namespace std;
 
 //_____________________________________________________________________________
 THaBeamEloss::THaBeamEloss( const char* name, const char* description,
 			    const char* input_beam ) :
-  THaElossCorrection(name,description,input_beam), fBeamModule(NULL)
+  THaElossCorrection(name,description,input_beam), fBeamModule(nullptr)
 {
   // Normal constructor.
 
@@ -34,7 +33,7 @@ THaBeamEloss::~THaBeamEloss()
 {
   // Destructor
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -113,8 +112,9 @@ Int_t THaBeamEloss::DefineVariables( EMode mode )
 {
   // Define/delete global variables.
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  THaElossCorrection::DefineVariables( mode );
+  Int_t ret = THaElossCorrection::DefineVariables( mode );
+  if( ret )
+    return ret;
 
   // Define the variables for the beam info subobject
   return DefineVarsFromList( THaBeamModule::GetRVarDef(), mode );

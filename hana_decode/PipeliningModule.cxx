@@ -8,234 +8,270 @@
 
 #include "PipeliningModule.h"
 #include "THaSlotData.h"
+#include "Helper.h"
 #include <iostream>
-#include <cstdlib>  // for exit()
+#include <cstring>     // for memcpy
+#include <algorithm>   // for std::transform
+#include <utility>     // for std::swap
 
 using namespace std;
 
-namespace Decoder {
-
-PipeliningModule::PipeliningModule(Int_t crate, Int_t slot)
-  : VmeModule(crate,slot),
-    fNWarnings(0), fBlockHeader(0),
-    data_type_def(15),  // initialize to FILLER WORD
-    fFirstTime(kTRUE), index_buffer(0)
+//_____________________________________________________________________________
+// Helper function for debugging
+// FIXME: BCI: Make a virtual function. This encoding is specific to Fadc250Module
+static void PrintBlock( const uint32_t* codabuffer, uint32_t pos, uint32_t len )
 {
-  fMultiBlockMode = kFALSE;
-  fBlockIsDone = kFALSE;
-  ReStart();
-}
-
-PipeliningModule::~PipeliningModule() {
-}
-
-Int_t PipeliningModule::SplitBuffer(const std::vector< UInt_t >& codabuffer) {
-
-// Split a CODA buffer into blocks.   A block is data from a traditional physics event.
-// In MultiBlock Mode, a pipelining module can have several events in each CODA buffer.
-// If block level is 1, then the buffer is a traditional physics event.
-// If finding >1 block, this will set fMultiBlockMode = kTRUE
-
-  std::vector<UInt_t > oneEventBuffer;
-  eventblock.clear();
-  fBlockIsDone = kFALSE;
-  Int_t eventnum = 1;
-  Int_t evt_num_modblock;
-
-  if ((fFirstTime == kFALSE) && (IsMultiBlockMode() == kFALSE)) {
-     eventblock.push_back(codabuffer);
-     index_buffer=1;
-     return 1;
-  }
-
-  int debug=1;
-
-  Int_t slot_blk_hdr = 0, slot_evt_hdr = 0;
-  Int_t BlockStart=0;
-
-  block_size = 0;   // member of the base class Module.h
-
-  for (UInt_t i=0;  i < codabuffer.size(); i++) {
-
-    UInt_t data=codabuffer[i];
-
-    if (debug >= 1) {
-      if (fDebugFile != 0) *fDebugFile << hex <<"SplitBuffer, data = "<<hex<<data<<dec<<endl;
-    }
-
-    UInt_t data_type_id = (data >> 31) & 0x1;  // Data type identification, mask 1 bit
-
-    if (data_type_id == 1)
-      data_type_def = (data >> 27) & 0xF;
-
-    if (debug == 1) {
-      if (fDebugFile != 0) *fDebugFile << "SplitBuffer: data types: data_type_id = " << data_type_id
-			<< " data_type_def = " << data_type_def << endl;
-    }
-
-    switch(data_type_def)
-      {
-      case 0: // Block header, indicates the begining of a block of events
-        if (data_type_id) {
-          fBlockHeader = data;
-          slot_blk_hdr = (data >> 22) & 0x1F;  // Slot number (set by VME64x backplane), mask 5 bits
-          block_size = (data >> 0) & 0xFF;  // Number of events in block, mask 8 bits
-          if (block_size > 1) fMultiBlockMode = kTRUE;
-          if ((fMultiBlockMode==kTRUE) && (slot_blk_hdr==fSlot)) BlockStart=1;
-          // Debug output
-          if (debug >= 1 && fDebugFile != 0) {
-            Int_t iblock_num = (data >> 8) & 0x3FF;  // Event block number, mask 10 bits
-            *fDebugFile << "SplitBuffer:  %% data BLOCK header: slot_blk_hdr = " << dec<<slot_blk_hdr
-                << " iblock_num = " << iblock_num << " block_size = " << block_size << endl;
-          }
-        }
+  size_t idx = pos;
+  while( idx < pos+len ) {
+    while( idx < pos+len && !TESTBIT(codabuffer[idx], 31) )
+      ++idx;
+    if( idx == pos+len )
+      break;
+    uint32_t data = codabuffer[idx];
+    uint32_t type = (data >> 27) & 0xF;
+    switch( type ) {
+      case 0:
+        cout << "Block header"
+             << " idx = " << idx
+             << " slot = " << ((data >> 22) & 0x1F)
+             << " blksz = " << ((data >> 0) & 0xFF)
+             << " iblkn = " << ((data >> 8) & 0x3FF);
         break;
-      case 1: // Block trailer, indicates the end of a block of events
-        {
-          Int_t slot_blk_trl = (data >> 22) & 0x1F;  // Slot number (set by VME64x backplane), mask 5 bits
-          if ((fMultiBlockMode==kTRUE) && (slot_blk_trl==fSlot)) {
-            BlockStart++;
-            oneEventBuffer.push_back(data);
-            // There is no "event trailer", but a block trailer indicates the last event in a block.
-            eventblock.push_back(oneEventBuffer);
-            oneEventBuffer.clear();
-          }
-
-          // Debug output
-          if (debug >= 1 && fDebugFile != 0) {
-            Int_t nwords_inblock = (data >> 0) & 0x3FFFFF;  // Total number of words in block of events, mask 22 bits
-            *fDebugFile << "SplitBuffer: %% data BLOCK trailer: slot_blk_trl = " <<  slot_blk_trl
-                << " nwords_inblock = " << nwords_inblock << endl;
-          }
-        }
+      case 1:
+        cout << "Block trailer"
+             << " idx = " << idx
+             << " slot = " << ((data >> 22) & 0x1F)
+             << " nwords = " << (data & 0x3FFFFF);
         break;
-      case 2: // Event header, indicates start of an event, includes the trigger number
-        {
-          slot_evt_hdr = (data >> 22) & 0x1F;  // Slot number (set by VME64x backplane), mask 5 bits
-          Int_t evt_num = (data & 0x3FFFFF);   // Total number of words in block of events, mask 22 bits
-          if (block_size==0) {
-            evt_num_modblock=0;
-          } else {
-            evt_num_modblock = (evt_num%block_size);
-          }
-          if (slot_blk_hdr==fSlot) {
-            BlockStart++;
-            if (fDebugFile != 0) *fDebugFile << "evt_num logic "<< evt_num<<"  "<<block_size<<"  "<<evt_num_modblock<<"   "<<eventnum<<endl;
-          }
-          // for some older firmware, slot_evt_hdr is zero, so use slot_blk_hdr
-          if ((fMultiBlockMode==kTRUE) && (slot_blk_hdr==fSlot)) {
-// There is no "event trailer", so we use the change to next event to recognize the end of an event.
-// One could look for the (evt_num_modblock != eventnum) but I find that for some data files the
-// evt_num makes no sense and is a random number.  Instead, the following logic works.
-            if (BlockStart != 2) {
-              eventblock.push_back(oneEventBuffer);
-              oneEventBuffer.clear();
-            }
-            eventnum = evt_num_modblock;
-            oneEventBuffer.push_back(fBlockHeader);  // put block header with each event, e.g. FADC250 needs it.
-            oneEventBuffer.push_back(data);
-          }
-
-          // Debug output
-          if (debug >= 1 && fDebugFile != 0) {
-            *fDebugFile << "SplitBuffer:  %% data EVENT header: slot_evt_hdr = " << slot_evt_hdr
-                << " evt_num = " << evt_num << "  "
-                << oneEventBuffer.size() <<"   "<<eventblock.size()<<endl;
-          }
-        }
+      case 2:
+        cout << " Event header"
+             << " idx = " << idx
+             << " slot = " << ((data >> 22) & 0x1F)
+//             << " nevt = " << (data & 0x3FFFFF);
+             << " time = " << ((data >>12) & 0x3FF)
+             << " trignum = " << (data & 0xFFF);
         break;
       default:
-        if (slot_blk_hdr != slot_evt_hdr) {
-          // for some older firmware, slot_evt_hdr is zero
-          if ((fNWarnings++ % 100)==0)
-            cerr << "PipeliningModule::WARNING : inconsistent slot num  "<<endl;
-        }
-        // all other data goes here
-        if ((fMultiBlockMode==kTRUE) && (slot_blk_hdr==fSlot)) oneEventBuffer.push_back(data);
-
-      }
-
-  }
-
-  fFirstTime = kFALSE;
-
-  if (IsMultiBlockMode() == kFALSE) {
-    eventblock.push_back(codabuffer);
-    index_buffer=1;
-    return 1;
-  }
-  if (IsMultiBlockMode() == kTRUE) {
-    if (static_cast<size_t>(block_size) != eventblock.size()) {
-      cerr << "PipeliningModule::ERROR:  num events in block inconsistent"<<endl;
-      if (fDebugFile != 0) *fDebugFile << "block_size = "<<dec<<block_size<<"   "<<eventblock.size()<<endl;
+        cout << "  Type = " << type
+             << " idx = " << idx;
+        break;
     }
-    if (debug >= 1) PrintBlocks();  // debug
+    cout << endl;
+    ++idx;
   }
-
-
-  return 0;
-
 }
 
-void PipeliningModule::PrintBlocks() {
-// Print all the blocks(events) if in mulitblock mode.
-// Note, the first event buffer will have the block header
-// the last buffer will have the block trailer
-// and all buffers will have an event header
-  static Int_t maxloops=5000000;
-  if (IsMultiBlockMode() == kFALSE) {
-     if (fDebugFile != 0) *fDebugFile << "PipelingModule:  Not in multiblock mode.  Bye."<<endl;
-     return;
+//_____________________________________________________________________________
+namespace Decoder {
+
+//_____________________________________________________________________________
+PipeliningModule::PipeliningModule( UInt_t crate, UInt_t slot )
+  : VmeModule(crate, slot),
+    fBlockHeader(0),
+    data_type_def(15),  // initialize to FILLER WORD
+    index_buffer(0)
+{
+}
+
+//_____________________________________________________________________________
+void PipeliningModule::Init( const char* configstr )
+{
+  // Set debug level of this module via optional configuration string in
+  // db_cratemap.dat.
+  //
+  // Example:
+  // ==== Crate 30 type vme
+  // # slot   model   bank   configuration string
+  //   10      250    2501   cfg: debug=1
+
+  Init();  // standard Init
+
+  UInt_t debug = 0;
+  vector<ConfigStrReq> req = { { "debug", debug } };
+  ParseConfigStr(configstr, req);
+
+  fDebug = static_cast<Int_t>(debug);
+}
+
+//_____________________________________________________________________________
+void PipeliningModule::Clear( Option_t* opt )
+{
+  VmeModule::Clear(opt);
+  evtblk.clear();
+  index_buffer = 0;
+}
+
+//_____________________________________________________________________________
+UInt_t PipeliningModule::LoadBlock( THaSlotData* sldat,
+                                    const UInt_t* evbuffer,
+                                    const UInt_t* pstop )
+{
+  // Load event block. If multi-block data, split the buffer into individual
+  // physics events.
+  // This routine is called for legacy-type buffers without bank structure.
+  // It currently just forwards to the bank-structure version, assuming the
+  // data format within the block is the same in both cases.
+
+  //TODO: is multiblock mode supported for non-bank data?
+  return LoadBank(sldat, evbuffer, 0, pstop+1-evbuffer);
+}
+
+//_____________________________________________________________________________
+Long64_t PipeliningModule::VerifyBlockTrailer(
+  const UInt_t* evbuffer, UInt_t pos, UInt_t len, Long64_t ibeg,
+  Long64_t iend ) const
+{
+  if( iend > 0 ) {
+    // Verify that the word count reported in the block trailer agrees with
+    // the trailer's position in the buffer.
+    UInt_t nwords_inblock = evbuffer[iend] & 0x3FFFFF;
+    if( ibeg + nwords_inblock == iend + 1 )
+      // All good
+      return iend;
+  } else {
+    // Block header without matching block trailer, should not happen
+    goto notfound;
   }
-  ReStart();
-  if (fDebugFile != 0) {
-      *fDebugFile << "PipeliningModule :: Number of events in block = "<<eventblock.size()<<endl;
-      *fDebugFile << "fSlot = "<<fSlot<<endl;
+  // Apparent misidentification: keep searching until hitting the buffer end
+  if( ++iend < pos+len ) {
+    cerr << "WARNING: Block trailer misidentification, slot " << fSlot
+         << ", roc " << fCrate << ", data 0x" << hex << evbuffer[iend-1] << dec
+         << ". Attempting recovery." << endl;
+    return -iend;
+  } else {
+ notfound:
+    cerr << "ERROR: Block trailer NOT found, slot " << fSlot
+         << ", roc " << fCrate << ". Corrupt data. Giving up." << endl;
+    cout << "Block data:" << endl;
+    PrintBlock(evbuffer, pos, len);
+    return 0;
   }
-  Int_t iblk=1;
-  Int_t icnt=0;
-  while (!BlockIsDone()) {
-    if (icnt++ > maxloops) {
-       cerr << "PipeliningModule:: ERROR: infinite loop PrintBlocks "<<endl;
-       exit(0);  //  should never happen
+}
+
+//_____________________________________________________________________________
+UInt_t PipeliningModule::LoadBank( THaSlotData* sldat,
+                                   const UInt_t* evbuffer,
+                                   UInt_t pos, UInt_t len )
+{
+  // Load event block. If multi-block data, split the buffer into individual
+  // physics events.
+  // This routine is called for buffers with bank structure.
+
+  if( fDebug > 1 )  // Set fDebug via module config string in db_cratemap.dat
+    PrintBlock(evbuffer,pos,len);
+
+  // Find block for this module's slot
+  auto ibeg = FindIDWord(evbuffer, pos, len, kBlockHeader, fSlot);
+  if( ibeg == -1 )
+    // Slot not present in buffer (OK)
+    return 0;
+  fBlockHeader = evbuffer[ibeg];  // save for convenience
+
+  // Multi-block event?
+  block_size = (evbuffer[ibeg] & 0xFF);  // Number of events in block
+  fMultiBlockMode = ( block_size > 1 );
+
+  if( fMultiBlockMode ) {
+    // Multi-block: Find all the event headers (there should be block_size
+    // of them) between here and the block trailer, save their positions,
+    // then proceed with decoding the first block
+    evtblk.reserve(block_size + 1);
+    Long64_t iend = ibeg+1;
+    while( true ) {
+      iend = FindEventsInBlock(evbuffer, iend, len+pos-iend,
+                               kEventHeader, kBlockTrailer, evtblk, fSlot);
+      if( (iend = VerifyBlockTrailer(evbuffer, pos, len, ibeg, iend)) > 0 )
+        break;
+      if( iend == 0 )
+        return 0;
+      iend = -iend;
     }
-    std::vector<UInt_t> evbuffer = GetNextBlock();
-    if (fDebugFile != 0) *fDebugFile << "Block number " << iblk++ <<endl;
-    for (UInt_t j = 0; j < evbuffer.size(); j++) {
-      if (fDebugFile != 0) *fDebugFile << "            evbuffer["<<j<<"] =   0x"<<hex<<evbuffer[j]<<dec<<endl;
+    assert( ibeg >= pos && iend > ibeg && iend < pos+len ); // trivially
+
+    if( evtblk.empty() )
+      //TODO missing event headers, should not happen
+      evtblk.push_back(ibeg+1);
+    // evtblk should have exactly block_size elements now
+    evtblk.push_back(iend + 1); // include block trailer
+
+    // Because our module decoders expect a block header at the start of every
+    // event block, we must unfortunately copy the event block here so that we
+    // have a writable buffer where we can prepend the block header.
+    // This could probably be avoided, but we'd have to rewrite all decoders.
+    size_t blklen = iend + 1 - ibeg;
+    fBuffer.resize(blklen);
+    memcpy(fBuffer.data(), evbuffer+ibeg, blklen * sizeof(fBuffer[0]));
+    // Adjust the saved event header locations such that they reference the
+    // corresponding locations in fBuffer
+    transform(ALL(evtblk), evtblk.begin(),
+              [ibeg]( UInt_t pos ) { return pos-ibeg; });
+
+    index_buffer = 0;
+    return LoadNextEvBuffer(sldat);
+
+  } else {
+    // Single block: Find end of block and let the module decode the event
+    Long64_t iend = ibeg+1;
+    while( true ) {
+      iend = FindIDWord(evbuffer, iend, len+pos-iend,
+                        kBlockTrailer, fSlot);
+      if( (iend = VerifyBlockTrailer(evbuffer, pos, len, ibeg, iend)) > 0 )
+        break;
+      if( iend == 0 )
+        return 0;
+      iend = -iend;
     }
+    assert( ibeg >= pos && iend > ibeg && iend < pos+len ); // trivially
+
+    return LoadSlot(sldat, evbuffer, ibeg, iend+1-ibeg);
   }
-  ReStart();
+  // not reached
 }
 
-void PipeliningModule::ReStart() {
-   index_buffer = 0;
-   fBlockIsDone = kFALSE;
-}
+//_____________________________________________________________________________
+UInt_t PipeliningModule::LoadNextEvBuffer( THaSlotData* sldat )
+{
+  // In multi-block mode, load the next event from the current block
 
-std::vector< UInt_t > PipeliningModule::GetNextBlock() {
-  std::vector< UInt_t > vnothing;  vnothing.clear();
-  if (eventblock.size()==0) {
-      cerr << "ERROR:  No event buffers ! "<<endl;   // Should never happen
-      return vnothing;
+  UInt_t ii = index_buffer;
+  assert( ii+1 < evtblk.size() );
+
+  // ibeg = event header, iend = one past last word of this event ( = next
+  // event header if more events pending)
+  auto ibeg = evtblk[ii], iend = evtblk[ii+1];
+  assert(ibeg > 0 && iend > ibeg && static_cast<size_t>(iend) <= fBuffer.size());
+
+  // Let ibeg point to the block header, or one before event header
+  if( ii == 0 )
+    ibeg = 0;
+  else {
+    --ibeg;
+    // Ensure the buffer starts with the block header word
+    std::swap(fBlockHeader, fBuffer[ibeg]);
   }
-  if (IsMultiBlockMode() == kFALSE ) return eventblock[0];
-  if (index_buffer == (eventblock.size()-1)) fBlockIsDone=kTRUE;
-  index_buffer++;
-  return eventblock[GetIndex()];
+
+  // Load slot starting with block header at ibeg
+  try {
+    ii = LoadSlot(sldat, fBuffer.data(), ibeg, iend-ibeg);
+  }
+
+  catch( ... ) {
+    // In case the calling code wants to continue, put the buffer back in a
+    // consistent state
+    if( ii != 0 ) std::swap(fBlockHeader, fBuffer[ibeg]);
+    throw;
+  }
+  if( ii != 0 ) std::swap(fBlockHeader, fBuffer[ibeg]);
+
+  // Next cached buffer. Set flag if we've exhausted the cache.
+  ++index_buffer;
+  if( index_buffer+1 >= evtblk.size() )
+    fBlockIsDone = true;
+
+  return ii;
 }
 
-UInt_t PipeliningModule::GetIndex() {
-  UInt_t idx = index_buffer - 1;
-  if (index_buffer > 0 && idx < eventblock.size())
-    return idx;
-  cerr << "Warning:  index problem in PipeliningModule "
-       << idx << "  " << eventblock.size() << endl;
-  return 0;
-}
-
-
-}
-
+//_____________________________________________________________________________
+} //namespace Decoder
 
 ClassImp(Decoder::PipeliningModule)

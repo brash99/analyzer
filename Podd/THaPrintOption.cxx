@@ -11,66 +11,36 @@
 //
 //////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-#include <iomanip>
-#include <algorithm>
-#include <cstdlib>
-#include <cstring>
-
 #include "THaPrintOption.h"
+#include "Helper.h"
+#include <iostream>
+#include <algorithm>
+#include <cctype>   // ::tolower, ::toupper
+#include <cstdlib>  // strtol
+#include <limits>
 
-ClassImp(THaPrintOption);
+ClassImp(THaPrintOption)
 
-//_____________________________________________________________________________
-THaPrintOption::THaPrintOption() : 
-  fString(0), fTokenStr(0), fNTokens(0), fTokens(0), fParam(0)
-{
-  // Default constructor
-
-  fEmpty = new char;
-  *fEmpty = 0;
-}
+using namespace std;
 
 //_____________________________________________________________________________
-THaPrintOption::THaPrintOption( const char* string ) :
-  fString(0), fTokenStr(0), fNTokens(0), fTokens(0), fParam(0)
+THaPrintOption::THaPrintOption( string str ) : fString{std::move(str)}
 {
   // Normal constructor
-  
-  fEmpty = new char;
-  *fEmpty = 0;
 
-  if( string ) {
-    fString = new char[ strlen(string)+1 ];
-    strcpy( fString, string );
-    Parse();
-  } 
+  Parse();
 }
 
 //_____________________________________________________________________________
-THaPrintOption::THaPrintOption( const THaPrintOption& rhs ) :
-  fString(0), fTokenStr(0), fNTokens(0), fTokens(0), fParam(0)
-{
-  // Copy constructor 
-
-  fEmpty = new char;
-  *fEmpty = 0;
-
-  if( rhs.fString ) {
-    fString = new char[ strlen(rhs.fString)+1 ];
-    strcpy( fString, rhs.fString );
-    Parse();
-  }
-}
+THaPrintOption::THaPrintOption( const char* str )
+  : THaPrintOption(string(str ? str : ""))
+{}
 
 //_____________________________________________________________________________
-THaPrintOption& THaPrintOption::operator=(const THaPrintOption& rhs)
+THaPrintOption& THaPrintOption::operator=( string rhs )
 {
-  // Assignment operator
-
-  if (this != &rhs) {
-    *this = rhs.fString;
-  }
+  fString = std::move(rhs);
+  Parse();
   return *this;
 }
 
@@ -79,74 +49,77 @@ THaPrintOption& THaPrintOption::operator=(const char* rhs)
 {
   // Initialize object with a string
 
-  delete [] fString; fString = 0;
-  *fEmpty = 0;
-  if( rhs ) {
-    fString = new char[ strlen(rhs)+1 ];
-    strcpy( fString, rhs );
-  }
+  if( rhs )
+    fString = rhs;
+  else
+    fString.clear();
   Parse();
   return *this;
 }
 
 //_____________________________________________________________________________
-THaPrintOption::~THaPrintOption()
+Bool_t THaPrintOption::Contains( const string& token ) const
 {
-  // Destructor
+  // Test if option contains the given token 'tok'
 
-  delete [] fString;
-  delete [] fTokenStr;
-  delete [] fTokens;
-  delete [] fParam;
-  delete fEmpty;
+  return any_of(ALL(fTokens), [&token]( const string& tok ) {
+    return tok == token;
+  });
 }
 
 //_____________________________________________________________________________
 void THaPrintOption::Parse()
 {
   // Parse the string and put the results in the internal arrays.
-  // This function should never generate an error since the input
-  // cannot be invalid.
+  // This function should never generate an error.
 
   const char* const delim = ", ";       // token delimiters
 
-  delete [] fTokenStr; fTokenStr = 0;
-  delete [] fTokens; fTokens = 0;
-  delete [] fParam; fParam = 0;
-  fNTokens = 0;
-  if( !fString || !*fString ) return;
+  fTokens.clear();
+  fParam.clear();
 
-  fTokenStr = new char[ strlen(fString)+1 ];
-  strcpy( fTokenStr, fString );
-
-  // How many tokens?
-
-  char* t = strtok( fTokenStr, delim );
-  if( t ) fNTokens = 1;
-  else    return;                           //Nothing to do
-  while( strtok( 0, delim )) fNTokens++;
-
-  // Set up arrays to hold token data
-
-  fTokens = new char* [fNTokens];
-  fParam  = new Int_t [fNTokens];
-  fTokens[0] = t;
-  fParam[0]  = atoi(t);
-  if( fNTokens == 1 ) return;
-
-  // Parse the tokens
-
-  strcpy( fTokenStr, fString );
-  strtok( fTokenStr, delim );
-  int i = 1;
-  while( (t = strtok( 0, delim )) ) {
-    fTokens[i]  = t;
-    fParam[i++] = atoi(t);
+  string::size_type start = 0;
+  string::size_type stop = 0;
+  while( start != string::npos && stop != string::npos ) {
+    stop = fString.find_first_of(delim, start);
+    string tok = fString.substr(start, stop - start);
+    if( !tok.empty() ) {
+      Int_t val = 0;
+      const char* str = tok.c_str();
+      char* str_end = nullptr;
+      auto conv = strtol(str, &str_end, 10);
+      if( str + tok.length() == str_end
+          && conv <= numeric_limits<Int_t>::max()
+          && conv >= numeric_limits<Int_t>::min() )
+        val = static_cast<Int_t>(conv);
+      fTokens.push_back(std::move(tok));
+      fParam.push_back(val);
+    }
+    start = fString.find_first_not_of(delim, stop);
   }
-
 }
 
 //_____________________________________________________________________________
+void THaPrintOption::Print() const
+{
+  for( Int_t i = 0; i < GetNOptions(); i++ )
+    cout << "\"" << GetOptionStr(i) << "\" => " << GetValue(i) << endl;
+}
 
+//_____________________________________________________________________________
+void THaPrintOption::ToLower()
+{
+  transform(ALL(fString), fString.begin(), ::tolower);
+  for( auto& tok: fTokens )
+    transform(ALL(tok), tok.begin(), ::tolower);
+}
 
+//_____________________________________________________________________________
+void THaPrintOption::ToUpper()
+{
+  transform(ALL(fString), fString.begin(), ::toupper);
+  for( auto& tok: fTokens )
+    transform(ALL(tok), tok.begin(), ::toupper);
+}
 
+//_____________________________________________________________________________

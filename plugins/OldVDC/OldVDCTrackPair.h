@@ -16,15 +16,13 @@ class OldVDCTrackPair : public TObject {
 
 public:
   OldVDCTrackPair() : 
-    fLowerTrack(0), fUpperTrack(0), fError(1e38), fStatus(0) {}
+    fLowerTrack(nullptr), fUpperTrack(nullptr), fError(1e38), fStatus(0) {}
   OldVDCTrackPair( pUV lt, pUV ut ) :
     fLowerTrack(lt), fUpperTrack(ut), fError(1e307), fStatus(0) {}
-  OldVDCTrackPair( const OldVDCTrackPair& rhs ) : TObject(rhs),
-    fLowerTrack(rhs.fLowerTrack), fUpperTrack(rhs.fUpperTrack),
-    fError(rhs.fError), fStatus(rhs.fStatus) {}
+  OldVDCTrackPair( const OldVDCTrackPair& rhs ) = default;
   OldVDCTrackPair& operator=( const OldVDCTrackPair& );
   
-  virtual ~OldVDCTrackPair() {}
+  virtual ~OldVDCTrackPair() = default;
 
   void            Analyze( Double_t spacing );
   virtual Int_t   Compare( const TObject* ) const;
@@ -32,11 +30,12 @@ public:
   pUV             GetLower()   const { return fLowerTrack; }
   pUV             GetUpper()   const { return fUpperTrack; }
   Int_t           GetStatus()  const { return fStatus; }
-  virtual Bool_t  IsSortable() const { return kTRUE; }
+  virtual Bool_t  IsSortable() const { return true; }
   void            SetStatus( Int_t i ) { fStatus = i; }
   virtual void    Print( Option_t* opt="" ) const;
 
-  Double_t        GetProjectedDistance( pUV here, pUV there, Double_t spacing );
+  static Double_t GetProjectedDistance( pUV here, pUV there,
+                                        Double_t spacing );
 
 protected:
 

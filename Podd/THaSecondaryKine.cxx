@@ -5,7 +5,7 @@
 // THaSecondaryKine
 //
 // Secondary particle kinematics module. 
-// This module calculates kinematical quantities for the hadron side of 
+// This module calculates kinematic quantities for the hadron side of
 // two-arm coincidence reactions. The reaction is
 //
 // e + A -> e' + X + B 
@@ -28,6 +28,7 @@
 #include "TRotation.h"
 
 using namespace std;
+using namespace Podd;
 
 ClassImp(THaSecondaryKine)
 
@@ -43,8 +44,8 @@ THaSecondaryKine::THaSecondaryKine( const char* name, const char* description,
   fPX_cm(kBig), fTheta_x_cm(kBig), fPhi_x_cm(kBig), fTheta_b_cm(kBig),
   fPhi_b_cm(kBig), fTX_cm(kBig), fTB_cm(kBig), fTtot_cm(kBig), fMandelS(kBig),
   fMandelT(kBig), fMandelU(kBig),
-  fMX(secondary_mass), fSpectroName(secondary_spectro), fSpectro(0),
-  fPrimaryName(primary_kine), fPrimary(0)
+  fMX(secondary_mass), fSpectroName(secondary_spectro), fSpectro(nullptr),
+  fPrimaryName(primary_kine), fPrimary(nullptr)
 {
   // Constructor
 
@@ -55,7 +56,7 @@ THaSecondaryKine::~THaSecondaryKine()
 {
   // Destructor
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -77,9 +78,6 @@ void THaSecondaryKine::Clear( Option_t* opt )
 Int_t THaSecondaryKine::DefineVariables( EMode mode )
 {
   // Define/delete global variables.
-
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
 
   RVarDef vars[] = {
     { "th_xq",    "Polar angle of detected particle with q (rad)",
@@ -117,7 +115,7 @@ Int_t THaSecondaryKine::DefineVariables( EMode mode )
     { "MandelS",  "Mandelstam s for secondary vertex (GeV^2)", "fMandelS" },
     { "MandelT",  "Mandelstam t for secondary vertex (GeV^2)", "fMandelT" },
     { "MandelU",  "Mandelstam u for secondary vertex (GeV^2)", "fMandelU" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( vars, mode );
 }

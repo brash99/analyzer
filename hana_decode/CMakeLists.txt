@@ -32,6 +32,7 @@ set(src
   Caen775Module.cxx
   Caen792Module.cxx
   CodaDecoder.cxx
+  DAQconfig.cxx
   F1TDCModule.cxx
   Fadc250Module.cxx
   FastbusModule.cxx
@@ -71,7 +72,7 @@ endif()
 
 string(REPLACE .cxx .h headers "${src}")
 list(APPEND headers THaBenchmark.h)
-set(allheaders ${headers} Decoder.h)
+set(allheaders ${headers} Decoder.h CustomAlloc.h)
 
 #----------------------------------------------------------------------------
 # libdc
@@ -80,9 +81,9 @@ add_library(${PROJECT_NAME}::${SUBPROJECT_NAME} ALIAS ${LIBNAME})
 
 target_compile_options(${LIBNAME}
   PUBLIC
-    ${${PROJECT_NAME_UC}_CXX_FLAGS_LIST}
+    ${${MAIN_PROJECT_NAME_UC}_CXX_FLAGS_LIST}
   PRIVATE
-    ${${PROJECT_NAME_UC}_DIAG_FLAGS_LIST}
+    ${${MAIN_PROJECT_NAME_UC}_DIAG_FLAGS_LIST}
   )
 if(WITH_DEBUG)
   target_compile_definitions(${LIBNAME} PUBLIC WITH_DEBUG)
@@ -101,6 +102,7 @@ target_link_libraries(${LIBNAME}
     ROOT::Core
     ${ONLIBS}    # et.h is in the THaEtClient.h public interface
   PRIVATE
+    Podd::Database
     EVIO::EVIO
   )
 set_target_properties(${LIBNAME} PROPERTIES
@@ -117,7 +119,7 @@ install(TARGETS ${LIBNAME}
 install(FILES ${allheaders} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 #----------------------------------------------------------------------------
-# libdcDict dictionary
+# ROOT dictionary
 build_root_dictionary(lib${LIBNAME} ${headers}
   TARGETS ${LIBNAME}
   PCMNAME ${LIBNAME}

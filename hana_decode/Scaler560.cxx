@@ -14,14 +14,10 @@ namespace Decoder {
 Module::TypeIter_t Scaler560::fgThisType =
   DoRegister( ModuleType( "Decoder::Scaler560" , 560 ));
 
-Scaler560::Scaler560(Int_t crate, Int_t slot)
+Scaler560::Scaler560( UInt_t crate, UInt_t slot )
   : GenScaler(crate, slot)
 {
-  Init();
-}
-
-Scaler560::~Scaler560()
-{
+  Scaler560::Init();
 }
 
 void Scaler560::Init()

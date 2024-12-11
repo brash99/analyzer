@@ -13,25 +13,26 @@
 #include "TClonesArray.h"
 #include "THaVDCHit.h"
 #include <cassert>
+#include <vector>
 
 namespace VDC {
   class TimeToDistConv;
 }
 
 class THaEvData;
-class THaTriggerTime;
 class THaVDC;
 
 class THaVDCPlane : public THaSubDetector {
 
 public:
 
-  THaVDCPlane( const char* name="", const char* description="",
-	       THaDetectorBase* parent = NULL );
+  explicit THaVDCPlane( const char* name="", const char* description="",
+                        THaDetectorBase* parent = nullptr );
   virtual ~THaVDCPlane();
 
   virtual void    Clear( Option_t* opt="" );
   virtual Int_t   Decode( const THaEvData& ); // Raw data -> hits
+  virtual Int_t   ApplyTimeCorrection();      // Drift time correction
   virtual Int_t   FindClusters();             // Hits -> clusters
   virtual Int_t   FitTracks();                // Clusters -> tracks
 
@@ -88,22 +89,24 @@ protected:
   TClonesArray*  fHits;      // Fired wires
   TClonesArray*  fClusters;  // Clusters
 
-  Int_t fNHits;           // Total number of hits (including multihits)
-  Int_t fNWiresHit;       // Number of wires with one or more hits
-  Int_t fNpass;           // Number of passes over hits in FindClusters()
+  Int_t  fNHits;          // Total number of hits (including multihits)
+  Int_t  fNWiresHit;      // Number of wires with one or more hits
+  Int_t  fNpass;          // Number of passes over hits in FindClusters()
 
   // Configuration
-  Int_t fMinClustSize;    // Minimum number of wires needed for a cluster
-  Int_t fMaxClustSpan;    // Maximum size of cluster in wire spacings
-  Int_t fNMaxGap;         // Max gap in wire numbers in a cluster
-  Int_t fMinTime;         // Min and Max limits of TDC times for clusters
-  Int_t fMaxTime;
-  Int_t fMaxThits;        // Max allowed number of hits per wire per event
+  Int_t  fMinClustSize;   // Minimum number of wires needed for a cluster
+  Int_t  fMaxClustSpan;   // Maximum size of cluster in wire spacings
+  Int_t  fNMaxGap;        // Max gap in wire numbers in a cluster
+  Int_t  fMinTime;        // Min and Max limits of TDC times for clusters
+  Int_t  fMaxTime;
+  UInt_t fMaxThits;       // Max allowed number of hits per wire per event
   Double_t fMinTdiff;     // Min and Max limits of times between wires in cluster
   Double_t fMaxTdiff;
   Double_t fTDCRes;       // TDC Resolution ( s / channel)
   Double_t fDriftVel;     // Drift velocity in the wire plane (m/s)
   Double_t fT0Resolution; // (Average) resolution of cluster time offset fit
+  Bool_t fOnlyFastestHit; // Only record earliest hit for each wire
+  Bool_t fNoNegativeTime; // Disallow negative drift times
 
   // Geometry
   TVector3 fCenter;       // Plane center in VDC coordinate system (m)
@@ -123,16 +126,31 @@ protected:
 
   THaVDC* fVDC;           // VDC detector to which this plane belongs
 
-  THaTriggerTime* fglTrg; //! time-offset global variable. Needed at the decode stage
+  // Temporary storage shared between member functions
+  UInt_t fMaxData;
+  Int_t  fNextHit;
+  THaVDCWire* fPrevWire;
 
   virtual void  MakePrefix();
   virtual Int_t ReadDatabase( const TDatime& date );
   virtual Int_t DefineVariables( EMode mode = kDefine );
-
   virtual Int_t ReadGeometry( FILE* file, const TDatime& date,
-			      Bool_t required = kFALSE );
+			      Bool_t required = false );
 
-  ClassDef(THaVDCPlane,0)             // VDCPlane class
+  virtual Int_t StoreHit( const DigitizerHitInfo_t& hitinfo, UInt_t data );
+  virtual void  PrintDecodedData( const THaEvData& evdata ) const;
+
+private:
+  Int_t ReadDatabaseErrcheck( const std::vector<Float_t>& tdc_offsets,
+                              const char* here );
+  Int_t ReadGeometryErrcheck( const std::vector<Double_t>& position,
+                              const std::vector<Double_t>& size,
+                              const char* here );
+  Int_t CreateTTDConv( const char* classname,
+                       const std::vector<Double_t>& ttd_param,
+                       const char* here );
+
+ClassDef(THaVDCPlane,0)             // VDCPlane class
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -10,9 +10,7 @@
 
 #include "VariableArrayVar.h"
 #include "THaVar.h"
-#include <iostream>
-#include <cstring>
-#include <typeinfo>
+#include <typeinfo>   // for typeid
 #include <cassert>
 
 using namespace std;
@@ -29,7 +27,7 @@ VariableArrayVar::VariableArrayVar( THaVar* pvar, const void* addr,
   assert( fCount );
 
   if( !VerifyNonArrayName(GetName()) ) {
-    fValueP = 0;
+    fValueP = nullptr;
     return;
   }
 }
@@ -55,7 +53,7 @@ Int_t VariableArrayVar::GetNdim() const
 //_____________________________________________________________________________
 const Int_t* VariableArrayVar::GetDim() const
 {
-  // Return array of dimensions of the array. Scalers are always return a
+  // Return array of dimensions of the array. Scalars always return a
   // pointer to 1 (as with array definition [1]).
 
   return fCount;
@@ -67,12 +65,12 @@ Bool_t VariableArrayVar::HasSameSize( const Variable& rhs ) const
   // Compare the size counter of this variable to that of 'rhs'.
 
   if( typeid(*this) != typeid(rhs) )
-    return kFALSE;
+    return false;
 
-  const VariableArrayVar* other = dynamic_cast<const VariableArrayVar*>(&rhs);
+  const auto *const other = dynamic_cast<const VariableArrayVar*>(&rhs);
   assert( other );
   if( !other )
-    return kFALSE;
+    return false;
 
   return fCount == other->fCount;
 }
@@ -80,7 +78,7 @@ Bool_t VariableArrayVar::HasSameSize( const Variable& rhs ) const
 //_____________________________________________________________________________
 Bool_t VariableArrayVar::HasSizeVar() const
 {
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________
@@ -104,7 +102,7 @@ Bool_t VariableArrayVar::IsVarArray() const
 {
   // Variable is a variable-size array
 
-  return kTRUE;
+  return true;
 }
 
 //_____________________________________________________________________________

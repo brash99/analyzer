@@ -25,6 +25,7 @@ THaHelicityDet::THaHelicityDet( const char* name, const char* description ,
 THaHelicityDet::~THaHelicityDet()
 {
   // Destructor
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
@@ -32,12 +33,9 @@ Int_t THaHelicityDet::DefineVariables( EMode mode )
 {
   // Initialize global variables
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
-
   const RVarDef var[] = {
     { "helicity", "Beam helicity",  "fHelicity" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( var, mode );
 }
@@ -58,7 +56,7 @@ void THaHelicityDet::MakePrefix()
   // All helicity detectors use only their name, not apparatus.name, as
   // prefix.
 
-  THaDetectorBase::MakePrefix( 0 );
+  THaDetectorBase::MakePrefix( nullptr );
 
 }
 
@@ -75,8 +73,8 @@ Int_t THaHelicityDet::ReadDatabase( const TDatime& date )
     return kOK;
 
   const  DBRequest request[] = {
-    { "helicity_sign", &fSign, kInt, 0, 1, -2 },
-    { 0 }
+    { "helicity_sign", &fSign, kInt, 0, true, -2 },
+    { nullptr }
   };
   Int_t err = LoadDB( file, date, request );
   fclose(file);

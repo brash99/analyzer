@@ -15,15 +15,15 @@ public:
   THaCut();
   THaCut( const char* name, const char* expression, const char* block,
 	  const THaVarList* vlst = gHaVars, const THaCutList* clst = gHaCuts );
-  THaCut( const THaCut& rhs );
-  THaCut& operator=( const THaCut& rhs );
-  virtual ~THaCut();
+  THaCut( const THaCut& ) = default;
+  THaCut& operator=( const THaCut& ) = default;
+  virtual ~THaCut() = default;
 
   using THaFormula::Eval;
 
   enum EvalMode { kModeErr = -1, kAND, kOR, kXOR };
 
-          void         ClearResult()        { fLastResult = kFALSE; }
+          void         ClearResult()        { fLastResult = false; }
   // Requires ROOT >= 4.00/00
   virtual Int_t        DefinedVariable( TString& variable, Int_t& action );
   virtual Double_t     Eval();
@@ -34,8 +34,8 @@ public:
           UInt_t       GetNCalled()   const { return fNCalled; }
           UInt_t       GetNPassed()   const { return fNPassed; }
           Bool_t       GetResult()    const { return fLastResult; }
-  virtual Bool_t       IsArray()      const { return kFALSE; }
-  virtual Bool_t       IsVarArray()   const { return kFALSE; }
+  virtual Bool_t       IsArray()      const { return false; }
+  virtual Bool_t       IsVarArray()   const { return false; }
   virtual void         Print( Option_t *opt="" ) const;
   virtual void         Reset();
   virtual void         SetBlockname( const Text_t* name );

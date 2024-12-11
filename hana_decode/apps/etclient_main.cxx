@@ -12,19 +12,17 @@ using namespace Decoder;
 int main(int argc, char *argv[]) 
 {
 
-       int mymode = 1;   // prefered mode for ET
-       THaEtClient *et;
-       et = new THaEtClient("adaqcp", mymode);  // opens connection to adaqcp computer.
+       int mymode = 1;   // preferred mode for ET
+       // open connection to adaqcp computer.
+       auto* et = new THaEtClient("adaqcp", mymode);
  
-       UInt_t* evbuff = new UInt_t[et->getBuffSize()];   // raw data buffer
-
-       int NUMEVT = 10000;
+       UInt_t NUMEVT = 10000;
        ULong64_t lensum=0;
        ULong64_t dummysum = 0;
 
        if (argc > 1) NUMEVT = atoi(argv[1]);
 
-       for (int iev=0; iev<NUMEVT; iev++) {
+       for (UInt_t iev=0; iev<NUMEVT; iev++) {
          if ((iev%1000) == 0) {
 	   cout << "Event "<<dec<<iev<<"  sums "<<lensum<<"  "<<dummysum<<endl;
 	 }
@@ -37,7 +35,7 @@ int main(int argc, char *argv[])
          if (PRINTOUT) 
            cout << "Event "<<dec<<iev<<" length "<<evbuff[0]+1<<endl;
          for (UInt_t i=0; i<evbuff[0]+1; i++) {
-           if(i < static_cast<UInt_t>(et->getBuffSize())) {
+           if(i < et->getBuffSize()) {
              if(PRINTOUT) {
 	       cout<<"evbuffer " <<dec<<i<< "  = "<<hex<<evbuff[i]<<endl;
 	     } else {
@@ -50,6 +48,4 @@ int main(int argc, char *argv[])
 	 //	 if (PRINTOUT) usleep(5000);
        }
        cout << "END, processes "<<NUMEVT<<" events,  sums "<<lensum<<"  "<<dummysum<<endl;
-
-       delete [] evbuff;
 }

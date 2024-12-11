@@ -9,12 +9,13 @@
 
 #include "TObject.h"
 #include "TVector3.h"
+#include "DataType.h" // for kBig
 
 class THaCluster : public TObject {
 
 public:
   THaCluster() : fCenter(kBig,kBig,kBig) {}
-  virtual ~THaCluster() {}
+  virtual ~THaCluster() = default;
 
   TVector3&        GetCenter()       { return fCenter; }
   virtual void     SetCenter( Double_t x, Double_t y, Double_t z )
@@ -28,8 +29,6 @@ public:
   // TObject functions redefined
   virtual void     Clear( Option_t* opt="" );
   virtual void     Print( Option_t* opt="" ) const;
-
-  static const Double_t kBig;
 
 protected:
 

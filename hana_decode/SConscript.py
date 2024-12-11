@@ -15,6 +15,7 @@ Caen1190Module.cxx
 Caen775Module.cxx
 Caen792Module.cxx
 CodaDecoder.cxx
+DAQconfig.cxx
 F1TDCModule.cxx
 Fadc250Module.cxx
 FastbusModule.cxx
@@ -46,8 +47,9 @@ local_evio = (dcenv['LOCAL_EVIO'] == 1)
 evioname = 'evio'
 eviolib = dcenv.subst('$SHLIBPREFIX')+evioname+dcenv.subst('$SHLIBSUFFIX')
 dcenv.Append(CPPPATH = dcenv.subst('$EVIO_INC'))
-dcenv.Replace(LIBS = evioname, LIBPATH = dcenv.subst('$EVIO_LIB'),
-              RPATH = [dcenv.subst('$EVIO_LIB')])
+dcenv.Replace(LIBS = [evioname,'PoddDB'],
+              LIBPATH = [dcenv.subst('$EVIO_LIB'),dcenv.subst('$HA_DB')],
+              RPATH = [dcenv.subst('$EVIO_LIB'),dcenv.subst('$HA_DB')])
 if local_evio:
     dc_install_rpath = []  # analyzer already contains the installation libdir
 else:
@@ -55,7 +57,7 @@ else:
 
 # Decoder library
 dclib = build_library(dcenv, libname, src,
-                      extrahdrs = ['Decoder.h'],
+                      extrahdrs = ['Decoder.h','CustomAlloc.h'],
                       extradicthdrs = ['THaBenchmark.h'],
                       dictname = altname,
                       install_rpath = dc_install_rpath,
@@ -63,7 +65,7 @@ dclib = build_library(dcenv, libname, src,
                       )
 
 proceed = "1" or "y" or "yes" or "Yes" or "Y"
-if dcenv.subst('$STANDALONE')==proceed or dcenv.GetOption('clean') \
+if dcenv.subst('$STANDALONE') == proceed or dcenv.GetOption('clean') \
     or 'uninstall' in COMMAND_LINE_TARGETS:
     SConscript(dirs = ['apps'], name='SConscript.py', exports='dcenv')
 

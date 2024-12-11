@@ -31,19 +31,12 @@ THaSubDetector::THaSubDetector( const char* name, const char* description,
 }
 
 //_____________________________________________________________________________
-THaSubDetector::~THaSubDetector()
-{
-  // Destructor
-
-}
-
-//_____________________________________________________________________________
 THaApparatus* THaSubDetector::GetApparatus() const
 {
   // Return parent apparatus (parent of parent detector)
 
   THaDetector* det = GetMainDetector();
-  return det ? det->GetApparatus() : 0;
+  return det ? det->GetApparatus() : nullptr;
 }
 
 //_____________________________________________________________________________
@@ -104,7 +97,7 @@ void THaSubDetector::SetParent( THaDetectorBase* detector )
     return;
   }
   if( !detector ) {
-    Error( Here(here), "Cannot set detector to NULL. Detector not changed.");
+    Error( Here(here), "Cannot set detector to nullptr. Detector not changed.");
     return;
   }    
   if( detector == this ) {

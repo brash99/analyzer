@@ -19,14 +19,14 @@ class THaG0Helicity : public THaHelicityDet, public THaG0HelicityReader {
 public:
 
   THaG0Helicity( const char* name, const char* description, 
-		 THaApparatus* a = NULL );
+		 THaApparatus* a = nullptr );
   THaG0Helicity();
   virtual ~THaG0Helicity();
 
-  virtual Int_t  Begin( THaRunBase* r=0 );
+  virtual Int_t  Begin( THaRunBase* r=nullptr );
   virtual void   Clear( Option_t* opt = "" );
   virtual Int_t  Decode( const THaEvData& evdata );
-  virtual Int_t  End( THaRunBase* r=0 );
+  virtual Int_t  End( THaRunBase* r=nullptr );
   virtual void   SetDebug( Int_t level );
   virtual Bool_t HelicityValid() const { return fValidHel; }
 
@@ -52,7 +52,7 @@ protected:
 
   Int_t     fG0delay;  // delay of helicity (# windows)
 
-  Int_t     fEvtype;               // Current CODA event type
+  UInt_t    fEvtype;               // Current CODA event type
   Double_t  fTdavg, fTdiff, fT0, fT9;
   Bool_t    fT0T9; // Was fT0 computed using fT9?
   Bool_t    fQuad_calibrated;
@@ -71,7 +71,8 @@ protected:
   UInt_t    fNqrt;
   TH1F *    fHisto;  // Histogram of time diffs, filled in calibration mode
   Int_t     fNB;
-  UInt_t    fIseed, fIseed_earlier, fInquad;
+  UInt_t    fIseed, fIseed_earlier;
+  Int_t     fInquad;
   
   Int_t     fTET9Index;         // Count of T9s (missing and found) since QRT=1
   Int_t     fTELastEvtQrt;      // QRT of last event
@@ -83,6 +84,9 @@ protected:
   Bool_t    fTEType9;           // True if timing event was T9
 
   UInt_t    fManuallySet;       // Bit pattern of manually set parameters
+  // fDelayedQrt indicates that the Qrt signal is delayed such that the evt9
+  // at the beginning of a Qrt does NOT contain the qrt flag
+  Bool_t    fDelayedQrt;
 
   virtual Int_t DefineVariables( EMode mode = kDefine );
   virtual Int_t ReadDatabase( const TDatime& date );

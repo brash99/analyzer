@@ -35,7 +35,7 @@ OldVDCTrackPair& OldVDCTrackPair::operator=( const OldVDCTrackPair& rhs )
 //_____________________________________________________________________________
 void OldVDCTrackPair::Analyze( Double_t spacing )
 {
-  // Compute goodness of match paremeter for the two UV tracks.
+  // Compute goodness of match parameter for the two UV tracks.
   // Essentially, this is a measure of how closely the two tracks
   // point at each other. 'spacing' is the separation of the 
   // upper and lower UV planes (in m).
@@ -51,7 +51,6 @@ void OldVDCTrackPair::Analyze( Double_t spacing )
   fError  = GetProjectedDistance( fLowerTrack, fUpperTrack, spacing );
   fError += GetProjectedDistance( fUpperTrack, fLowerTrack, -spacing );
 
-  return;
 }
 
 //_____________________________________________________________________________
@@ -79,7 +78,7 @@ Int_t OldVDCTrackPair::Compare( const TObject* obj ) const
   if( !obj || IsA() != obj->IsA() )
     return -1;
 
-  const OldVDCTrackPair* rhs = static_cast<const OldVDCTrackPair*>( obj );
+  const auto* rhs = static_cast<const OldVDCTrackPair*>( obj );
 
   if( fError < rhs->fError )
     return -1;

@@ -22,33 +22,30 @@
 #include "THaVform.h"
 #include "THaString.h"
 #include "TObject.h"
-#include "THaFormula.h"
 #include "THaVarList.h"
 #include "THaVar.h"
-#include "THaGlobals.h"
 #include "THaCut.h"
 #include "TH1.h"
 #include "TH2.h"
-#include "TTree.h"
 #include "TFile.h"
 #include "TRegexp.h"
 #include "TError.h"
 #include "TROOT.h"
+#include <cstdlib>
 #include <algorithm>
-#include <fstream>
-#include <cstring>
 #include <iostream>
+#include <utility>
 
 using namespace std;
 using namespace THaString;
 
 //_____________________________________________________________________________
-THaVhist::THaVhist( const string& type, const string& name, 
-		    const string& title ) :
-  fType(type), fName(name), fTitle(title), fNbinX(0), fNbinY(0), fSize(0),
-  fInitStat(0), fScalar(0), fEye(0), fEyeOffset(0), fXlo(0.), fXhi(0.), fYlo(0.), fYhi(0.),
-  fFirst(kTRUE), fProc(kTRUE), fFormX(NULL), fFormY(NULL), fCut(NULL),
-  fMyFormX(kFALSE), fMyFormY(kFALSE), fMyCut(kFALSE)
+THaVhist::THaVhist( string type, string name, string title ) :
+  fType(std::move(type)), fName(std::move(name)), fTitle(std::move(title)),
+  fNbinX(0), fNbinY(0), fSize(0), fInitStat(0), fScalar(0), fEye(0),
+  fEyeOffset(0), fXlo(0.), fXhi(0.), fYlo(0.), fYhi(0.),
+  fFirst(true), fProc(true), fFormX(nullptr), fFormY(nullptr), fCut(nullptr),
+  fMyFormX(false), fMyFormY(false), fMyCut(false), fDebug(0)
 { 
   fH1.clear();
 }
@@ -60,27 +57,26 @@ THaVhist::~THaVhist()
   if (fMyFormY) delete fFormY;
   if (fMyCut) delete fCut;
   if( TROOT::Initialized() ) {
-    for (std::vector<TH1*>::iterator ith = fH1.begin();
-	 ith != fH1.end(); ++ith) delete *ith;
+    for( auto& ith : fH1 ) delete ith;
   }
 }
 
 //_____________________________________________________________________________
 void THaVhist::CheckValidity( ) 
 {
-  fProc = kTRUE;
+  fProc = true;
   if (fEye == 0 && fScalar == 0 && fSize != static_cast<Int_t>(fH1.size())) {
-     fProc = kFALSE;
+     fProc = false;
      ErrPrint();
      cerr << "THaVhist:ERROR:: Inconsistent sizes."<<endl;
   }
-  if (fFormX == 0) {
-     fProc = kFALSE;
+  if (fFormX == nullptr) {
+     fProc = false;
      ErrPrint();
      cerr << "THaVhist:ERROR:: No X axis defined."<<endl;
   }
   if (fInitStat != 0) {
-     fProc = kFALSE;
+     fProc = false;
      ErrPrint();
      cerr << "THaVhist:ERROR:: Improperly initialized."<<endl;
   }
@@ -99,28 +95,25 @@ Int_t THaVhist::Init( )
   // fInitStat !=0 --> various errors, interpreted 
   //                   with ErrPrint();
 
-  const int ldebug = 0;
-
-  for (std::vector<TH1*>::iterator ith = fH1.begin();
-       ith != fH1.end(); ++ith) delete *ith;
+  if( TROOT::Initialized() ) {
+    for( auto& ith : fH1 ) delete ith;
+  }
   fH1.clear();
   fInitStat = 0;
-  Int_t status;
-  string sname;
 
-  if (ldebug) cout << "THaVhist :: init "<<fName<<endl;
+  if (fDebug) cout << "THaVhist :: init " << fName << endl;
 
   if (fNbinX == 0) {
      cerr << "THaVhist:ERROR:: Histogram "<<fName<<" has no bins."<<endl;
      fInitStat = kNoBinX;
      return fInitStat;
   }
-  if (fFormX == 0) {
-     if (fVarX == "") {
-       cerr << "THaVhist:WARNING:: Empty X formula."<<endl;
-     }
-     sname = fName+"X";
-     if (ldebug) cout << "THaVhist ::  X var "<<sname<<endl;
+  if (fFormX == nullptr) {
+    if( fVarX.empty() ) {
+      cerr << "THaVhist:WARNING:: Empty X formula." << endl;
+    }
+     string sname = fName+"X";
+     if (fDebug) cout << "THaVhist ::  X var " << sname << endl;
 
      if (FindEye(fVarX)) {
        fFormX = new THaVform("eye",sname.c_str(),"[0]");
@@ -128,9 +121,9 @@ Int_t THaVhist::Init( )
      } else {
        fFormX = new THaVform("formula",sname.c_str(),fVarX.c_str());
      }
-     fMyFormX = kTRUE;
+     fMyFormX = true;
 
-     status = fFormX->Init();
+     Int_t status = fFormX->Init();
      if (status != 0) {
        fFormX->ErrPrint(status);
        fInitStat = kIllFox;
@@ -138,34 +131,34 @@ Int_t THaVhist::Init( )
      }
   }
 
-  if (ldebug) cout << "THaVhist :: Y bins "<<fNbinY<<endl;
+  if (fDebug) cout << "THaVhist :: Y bins " << fNbinY << endl;
 
-  if (fNbinY != 0 && fFormY == 0) {
-     if (fVarY == "") {
+  if (fNbinY != 0 && fFormY == nullptr) {
+    if( fVarY.empty()) {
        cerr << "THaVhist:WARNING:: Empty Y formula."<<endl;
      }
-     sname = fName+"Y";
+     string sname = fName+"Y";
      if (FindEye(fVarY)) {
        fFormY = new THaVform("eye",sname.c_str(),"[0]");
        fFormY->SetEyeOffset(fEyeOffset);
      } else {
        fFormY = new THaVform("formula",sname.c_str(),fVarY.c_str());
      }
-     fMyFormY = kTRUE;
+     fMyFormY = true;
 
-     status = fFormY->Init();
+     Int_t status = fFormY->Init();
      if (status != 0) {
        fFormY->ErrPrint(status);
        fInitStat = kIllFoy;
        return fInitStat;
      }
   }
-  if (fCut == 0 && HasCut()) {
-     sname = fName+"Cut";
+  if (fCut == nullptr && HasCut()) {
+     string sname = fName+"Cut";
      fCut = new THaVform("cut",sname.c_str(),fScut.c_str());
-     fMyCut = kTRUE;
+     fMyCut = true;
 
-     status = fCut->Init();
+     Int_t status = fCut->Init();
      if (status != 0) {
        fCut->ErrPrint(status);
        fInitStat = kIllCut;
@@ -176,7 +169,7 @@ Int_t THaVhist::Init( )
 
   fSize = FindVarSize();
 
-  if (ldebug) cout << "THaVhist :: fSize =  "<<fSize<<endl;
+  if (fDebug) cout << "THaVhist :: fSize =  " << fSize << endl;
 
   if (fSize < 0) {
     switch (fSize) {
@@ -213,7 +206,6 @@ void THaVhist::ReAttach( )
   if (fFormX && fMyFormX) fFormX->ReAttach();
   if (fFormY && fMyFormY) fFormY->ReAttach();
   if (fCut && fMyCut) fCut->ReAttach();
-  return;
 }
 
 
@@ -221,23 +213,21 @@ void THaVhist::ReAttach( )
 Bool_t THaVhist::FindEye(const string& var) {
 // If the variable is "[I]" it is an "Eye" variable.
 // This means we will simply use I = 0,1,2, to fill that axis.
-  const int debug=0;
-  string::size_type pos, pos1,pos2;
-  string eye  = "[I]";
-  if(debug) cout << "FindEye for var = "<<var<<endl;
-  pos1 = var.find(ToUpper(eye),0);
-  pos2 = var.find(ToLower(eye),0);
-  pos = string::npos;
-  if (pos1 != string::npos) pos = pos1;
-  if (pos2 != string::npos) pos = pos2;
-  if (pos  != string::npos) {
-    if (var.length() == eye.length()) {
-      if(debug) cout << "Is an Eye var [I]"<<endl;
-      return kTRUE;
-    } 
+  const string eye = "[I]";
+  if( fDebug ) cout << "FindEye for var = " << var << endl;
+  auto pos1 = var.find(ToUpper(eye), 0);
+  auto pos2 = var.find(ToLower(eye), 0);
+  auto pos = string::npos;
+  if( pos1 != string::npos ) pos = pos1;
+  if( pos2 != string::npos ) pos = pos2;
+  if( pos != string::npos ) {
+    if( var.length() == eye.length() ) {
+      if( fDebug ) cout << "Is an Eye var [I]" << endl;
+      return true;
+    }
   }
 // If you did not find [I] there could be an offset like [I+1]. 
-  if(debug) cout << "Checking for Eye offset "<<endl;
+  if( fDebug ) cout << "Checking for Eye offset " << endl;
   return FindEyeOffset(var);
 }
 
@@ -247,30 +237,30 @@ Bool_t THaVhist::FindEyeOffset(const string& var) {
 // with offset fEyeOffset.
 // This means we will use I = 0+offset, 1+offset, 2+offset ...
 // to fill that axis.
-  int debug=0;
   fEyeOffset = 0;
-  string::size_type pos, pos1,pos2,pos3;
-  string eyestart  = "[I+";
-  string eyeend = "]";
-  pos1 = var.find(ToUpper(eyestart),0);
-  pos2 = var.find(ToLower(eyestart),0);
-  pos = string::npos;
-  if (pos1 != string::npos) pos = pos1;
-  if (pos2 != string::npos) pos = pos2;
-  if (pos  != string::npos) {
-    pos3 = var.find(eyeend,pos);
-    if (pos3 != string::npos) {
-      pos3 = var.find(eyeend,pos);
-      if (pos3 != string::npos) {
-         string cnum = var.substr(pos+3,var.length()-4);
-         fEyeOffset = atoi(cnum.c_str());       
-         if (debug) cout << "FindEyeOffset: substring with number "<<pos<<"   "<<pos3<<"    "<<cnum<<"   "<<fEyeOffset<<endl;
-	 return kTRUE;
+  const string eyestart  = "[I+";
+  const string eyeend = "]";
+  auto pos1 = var.find(ToUpper(eyestart), 0);
+  auto pos2 = var.find(ToLower(eyestart), 0);
+  auto pos = string::npos;
+  if( pos1 != string::npos ) pos = pos1;
+  if( pos2 != string::npos ) pos = pos2;
+  if( pos != string::npos ) {
+    auto pos3 = var.find(eyeend, pos);
+    if( pos3 != string::npos ) {
+      pos3 = var.find(eyeend, pos);
+      if( pos3 != string::npos ) {
+        string cnum = var.substr(pos + 3, var.length() - 4);
+        fEyeOffset = atoi(cnum.c_str());
+        if( fDebug )
+          cout << "FindEyeOffset: substring with number " << pos << "   "
+               << pos3 << "    " << cnum << "   " << fEyeOffset << endl;
+        return true;
       }
     }
   }
-  if (debug) cout << "Not an Eye variable! "<<endl;
-  return kFALSE;
+  if( fDebug ) cout << "Not an Eye variable! " << endl;
+  return false;
 }
 
 //_____________________________________________________________________________
@@ -287,7 +277,7 @@ Int_t THaVhist::FindVarSize()
  // If the X and Y are both vectors they must have the same 
  // dimensions or there is an error, and the indices track.
  // The cut can be a scalar or a vector; if the cut is a 
- // vector it must have the same dimenions as the X or the Y since
+ // vector it must have the same dimensions as the X or the Y since
  // the indices track with the variable which is a vector.
  //
  // 2) potentially a vector -- the old (ca 2003) behavior.
@@ -314,8 +304,6 @@ Int_t THaVhist::FindVarSize()
  //     -3 = Cut size inconsistent with X.
  //     -4 = Cut size inconsistent with Y.
 
-  const int ldebug=0;
-
   if (!fFormX) return -2;  // Error, must have at least an X.
   Int_t sizex = 0, sizey = 0, sizec = 0;
   if (fCut) sizec = fCut->GetSize();
@@ -323,10 +311,11 @@ Int_t THaVhist::FindVarSize()
 // because of the "s" prefix, e.g. "sth2f"
   if (fScalar) {  
     sizex = fFormX->GetSize();
-    if (ldebug) cout << "THaVhist:: is scalar , sizex = "<<sizex<<"  sizec "<<sizec<<"   fFormY "<<fFormY<<endl;
+    if (fDebug) cout << "THaVhist:: is scalar , sizex = " << sizex
+                     << "  sizec " << sizec << "   fFormY " << fFormY << endl;
     if (fFormY) {
       sizey = fFormY->GetSize();
-      if (ldebug) cout << "THaVhist::  sizey = "<<sizey<<endl;
+      if (fDebug) cout << "THaVhist::  sizey = " << sizey << endl;
       if (sizey != sizex) {
 	cerr << "Scalar histogram, but inconsistent sizes of X and Y"<<endl;
         return -2;
@@ -384,9 +373,8 @@ Int_t THaVhist::BookHisto(Int_t hfirst, Int_t hlast)
   // Using ROOT Histogram classes, set up the vector
   // of histograms of type fType (th1f, th1d, th2f, th2d) 
   // for vector indices that run from hfirst to hlast.
-  const int ldebug=0;
   fSize = hlast;
-  if(ldebug) cout << "BookHisto:: "<<hfirst<<"  "<<hlast<<endl;
+  if(fDebug) cout << "BookHisto:: " << hfirst << "  " << hlast << endl;
   if (hfirst > hlast) return -1;
   if (fSize > fgVHIST_HUGE) {
     // fSize cannot be infinite.  
@@ -403,7 +391,7 @@ Int_t THaVhist::BookHisto(Int_t hfirst, Int_t hlast)
   string stitle = fTitle;
   bool doing_array = (fSize>1);
   for (Int_t i = hfirst; i < fSize; ++i) {
-    if (ldebug) cout << "BookHisto "<<i<<"   "<<fType<<endl;
+    if (fDebug) cout << "BookHisto " << i << "   " << fType << endl;
     if (fEye == 0 && doing_array) {
        sname = fName + Form("%d",i); 
        stitle = fTitle + Form(" %d",i);
@@ -453,10 +441,9 @@ Int_t THaVhist::Process()
   // sensible limit) if the inputs grow in size.
 
   // Check validity just once for efficiency.  
-  const int ldebug=0;
-  if (ldebug) cout << "----------------  THaVhist :: Process  "<<fName<<"   //  "<<fTitle<<endl<<flush;
+  if (fDebug) cout << "----------------  THaVhist :: Process  " << fName << "   //  " << fTitle << endl << flush;
   if (fFirst) {
-    fFirst = kFALSE;  
+    fFirst = false;
     CheckValidity();
   }
   if ( !IsValid() ) return -1;
@@ -473,11 +460,11 @@ Int_t THaVhist::Process()
     // The following is my interpretation of the original code with a bugfix
     // for the case where both X and Y are variable-size arrays (23-Jan-17 joh)
     Int_t sizex = fFormX->GetSize();
-    if(ldebug) cout << "THaVhist :: Process   sizex  "<<sizex<<endl<<flush;
+    if(fDebug) cout << "THaVhist :: Process   sizex  " << sizex << endl << flush;
 
     if( fFormY ) {  // 2D histo
       Int_t sizey = fFormY->GetSize(); 
-      if(ldebug) cout << "THaVhist :: Process   sizey  "<<sizey<<endl<<flush;
+      if(fDebug) cout << "THaVhist :: Process   sizey  " << sizey << endl << flush;
      // Vararrys that report zero size are empty; nothing to do
       if( (sizex == 0 && fFormX->IsVarray()) ||
 	  (sizey == 0 && fFormY->IsVarray()) )
@@ -490,7 +477,8 @@ Int_t THaVhist::Process()
       // if cut size > 1, let the index track the other variable's index
       Int_t *ic = (sizec <= 1) ? &zero : &i;
 
-      if(ldebug) cout << "THaVhist :: Process   ix, iy, ic  "<<*ix<<"  "<<*iy<<"  "<<*ic<<endl;
+      if(fDebug) cout << "THaVhist :: Process   ix, iy, ic  "
+                      << *ix << "  " << *iy << "  " << *ic << endl;
       
       // Number of valid elements:
       // If GetSize()==0 for X or Y, it's the size of the other variable
@@ -498,7 +486,7 @@ Int_t THaVhist::Process()
       // If both have size > 0, it's the smaller of the two
       //  (diagonal elements of the XY index matrix)
       Int_t n = (sizex == 0 || sizey == 0) ? max(sizex,sizey) : min(sizex,sizey);
-      if(ldebug) cout << "THaVhist :: Process   n  "<<n<<endl;
+      if(fDebug) cout << "THaVhist :: Process   n  " << n << endl;
       for ( ; i < n; ++i) {
 	//        cout << "THaVhist :: proc loop: data  "<<i<<"  "<<fFormX->GetData(*ix)<<"   "<<fFormY->GetData(*iy)<<"  *ic "<<*ic<<endl<<flush;
 	if ( CheckCut(*ic)==0 ) continue;
@@ -509,7 +497,7 @@ Int_t THaVhist::Process()
     } else {  // 1D histo
       
       for (Int_t i = 0; i < sizex; ++i) {
-        if(ldebug) cout << "THaVhist :: 1D histo "<<i<<"  "<<sizec<<endl;
+        if(fDebug) cout << "THaVhist :: 1D histo " << i << "  " << sizec << endl;
         if (sizec == sizex) {
   	   if ( CheckCut(i)==0 ) continue;
 	} else {
@@ -530,15 +518,15 @@ Int_t THaVhist::Process()
     }    
 
     // Slightly tricky coding here to avoid redundant testing inside the loop
-    Int_t zero = 0, i;
+    Int_t zero = 0, i = 0;
     Int_t* idx = (fEye == 1) ? &zero : &i;
     if( fFormY ) {
-      for (i = 0; i < fSize; ++i) {
+      for( ; i < fSize; ++i ) {
 	if ( CheckCut(i)==0 ) continue; 
 	fH1[*idx]->Fill(fFormX->GetData(i), fFormY->GetData(i));
       }
     } else {
-      for (i = 0; i < fSize; ++i) {
+      for( ; i < fSize; ++i ) {
 	if ( CheckCut(i)==0 ) continue; 
 	fH1[*idx]->Fill(fFormX->GetData(i));
       }
@@ -551,8 +539,7 @@ Int_t THaVhist::Process()
 //_____________________________________________________________________________
 Int_t THaVhist::End() 
 {
-  for (vector<TH1* >::iterator ith = fH1.begin(); 
-      ith != fH1.end(); ++ith ) (*ith)->Write();
+  for( auto& ith : fH1 ) ith->Write();
   return 0;
 }
 

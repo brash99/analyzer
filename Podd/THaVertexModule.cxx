@@ -11,20 +11,14 @@
 
 #include "THaVertexModule.h"
 #include "VarDef.h"
+#include "DataType.h"  // for kBig
 
 using namespace std;
 
 //_____________________________________________________________________________
-THaVertexModule::THaVertexModule() : fVertexOK(kFALSE)
+THaVertexModule::THaVertexModule() : fVertexOK(false)
 {
   // Normal constructor.
-
-}
-
-//_____________________________________________________________________________
-THaVertexModule::~THaVertexModule()
-{
-  // Destructor
 
 }
 
@@ -33,11 +27,9 @@ void THaVertexModule::VertexClear()
 {
   // Reset vertex object
 
-  const Double_t kBig = 1e38;
-
   fVertex.SetXYZ(kBig,kBig,kBig);
   fVertexError.SetXYZ(1.0,1.0,1.0);
-  fVertexOK = kFALSE;
+  fVertexOK = false;
 }
 
 //_____________________________________________________________________________
@@ -50,7 +42,7 @@ const RVarDef* THaVertexModule::GetRVarDef()
     { "y",  "vertex y-position", "fVertex.fY" },
     { "z",  "vertex z-position", "fVertex.fZ" },
     { "ok", "Data valid (1=ok)", "fVertexOK" },
-    { 0 }
+    { nullptr }
   };
   return vars;
 }

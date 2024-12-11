@@ -19,14 +19,15 @@
 
 #include <cstring>   // for memchr
 #include <cstdlib>   // for strtoul
-#include <errno.h>
+#include <cerrno>
 #include <utility>
 #include <iostream>
+#include <cassert>
 
 using namespace std;
 
-typedef BdataLoc::TypeSet_t  TypeSet_t;
-typedef BdataLoc::TypeIter_t TypeIter_t;
+using TypeSet_t  = BdataLoc::TypeSet_t;
+using TypeIter_t = BdataLoc::TypeIter_t;
 
 TypeIter_t CrateLoc::fgThisType      = DoRegister( BdataLocType( "CrateLoc",      "crate",  4 ));
 TypeIter_t CrateLocMulti::fgThisType = DoRegister( BdataLocType( "CrateLocMulti", "multi",  4 ));
@@ -74,7 +75,7 @@ Int_t BdataLoc::DefineVariables( EMode mode )
 }
 
 //_____________________________________________________________________________
-Int_t BdataLoc::CheckConfigureParams( const TObjArray* params, Int_t start )
+Int_t BdataLoc::CheckConfigureParams( const TObjArray* params, Int_t start ) const
 {
   // Check given parameters of call to Configure for obvious errors.
   // Internal helper function.
@@ -87,7 +88,7 @@ Int_t BdataLoc::CheckConfigureParams( const TObjArray* params, Int_t start )
   for( Int_t ip = start; ip < start + GetNparams(); ++ip ) {
     if( params->At(ip)->IsA() != TObjString::Class() )
       return 2;
-    TObjString* os = static_cast<TObjString*>(params->At(ip));
+    auto* os = dynamic_cast<TObjString*>(params->At(ip));
     if( !os )
       return 3;
     if( os->String().IsNull() )
@@ -120,7 +121,7 @@ TypeSet_t& BdataLoc::fgBdataLocTypes()
   // Local storage for all defined BdataLoc types. Initialize here on first use
   // (cf. http://www.parashift.com/c++-faq/static-init-order-on-first-use-members.html)
 
-  static TypeSet_t* fgBdataLocTypes = new TypeSet_t;
+  static auto* fgBdataLocTypes = new TypeSet_t;
 
   return *fgBdataLocTypes;
 }
@@ -177,7 +178,7 @@ void BdataLoc::Print( Option_t* opt ) const
 //_____________________________________________________________________________
 Int_t CrateLoc::Configure( const TObjArray* params, Int_t start )
 {
-  // Initialize CrateLoc from given parmeters
+  // Initialize CrateLoc from given parameters
 
   Int_t ret = BdataLoc::Configure( params, start );
   if( ret )
@@ -248,7 +249,7 @@ void CrateLocMulti::Load( const THaEvData& evdata )
   // Load all decoded hits from crate/slot/chan address
 
   data = 0;
-  for (Int_t i = 0; i < evdata.GetNumHits(crate,slot,chan); ++i) {
+  for( UInt_t i = 0; i < evdata.GetNumHits(crate, slot, chan); ++i ) {
     rdata.push_back( evdata.GetData(crate,slot,chan,i) );
   }
 }
@@ -262,9 +263,8 @@ void CrateLocMulti::PrintMultiData( Option_t* ) const
   if( rdata.empty() )
     cout << "(no hits)";
   else {
-    for( vector<UInt_t>::const_iterator it = rdata.begin();
-	 it != rdata.end(); ++it ) {
-      cout << " " << *it;
+    for( auto data : rdata ) {
+      cout << " " << data;
     }
   }
 }
@@ -282,7 +282,7 @@ void CrateLocMulti::Print( Option_t* opt ) const
 //_____________________________________________________________________________
 Int_t WordLoc::Configure( const TObjArray* params, Int_t start )
 {
-  // Initialize WordLoc from given parmeters
+  // Initialize WordLoc from given parameters
 
   Int_t ret = BdataLoc::Configure( params, start );
   if( ret )
@@ -290,7 +290,7 @@ Int_t WordLoc::Configure( const TObjArray* params, Int_t start )
 
   // Convert header word, given as a hex string, to unsigned int32
   const char* hs = GetString( params, start+2 ).Data();
-  char* p = 0;
+  char* p = nullptr;
   errno = 0;
   unsigned long li = strtoul( hs, &p, 16 );
   if( errno || *p )   return 10;
@@ -307,13 +307,14 @@ void WordLoc::Load( const THaEvData& evdata )
 {
   // Load data at header/notoskip position from crate data buffer 
 
-  typedef const UInt_t rawdata_t;
+  using rawdata_t = const UInt_t;
 
-  Int_t roclen = evdata.GetRocLength(crate);
+  UInt_t roclen = evdata.GetRocLength(crate);
   if( roclen < ntoskip+1 ) return;
 
-  rawdata_t* cratebuf = evdata.GetRawDataBuffer(crate), *endp = cratebuf+roclen+1;
+  rawdata_t* cratebuf = evdata.GetRawDataBuffer(crate);
   assert(cratebuf);  // Must exist if roclen > 0
+  rawdata_t* endp = cratebuf+roclen+1;
 
   // Accelerated search for the header word. Coded explicitly because there
   // is no "memstr" in the standard library.
@@ -329,7 +330,8 @@ void WordLoc::Load( const THaEvData& evdata )
 	 (p = (rawdata_t*)memchr(p,h,sizeof(rawdata_t)*(endp-p-1)+1)) &&
 	 p <= endp-ntoskip-1 ) {
     // The header must be aligned to a word boundary
-    int off = ((char*)p-(char*)cratebuf) & (sizeof(rawdata_t)-1);  // same as % sizeof()
+    assert(p > cratebuf);
+    size_t off = ((char*)p-(char*)cratebuf) & (sizeof(rawdata_t)-1);  // same as % sizeof()
     if( off != 0 ) {
       p = (rawdata_t*)((char*)p + sizeof(rawdata_t)-off);
       continue;

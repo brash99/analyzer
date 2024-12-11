@@ -10,7 +10,6 @@
 #include "TMath.h"
 #include <iostream>
 #include <string>
-#include <sstream>
 
 using namespace std;
 
@@ -18,12 +17,12 @@ namespace Decoder {
 
   const int DEFAULT_DELTAT = 4;
 
-  GenScaler::GenScaler(Int_t crate, Int_t slot)
-    : VmeModule(crate, slot),
-      fIsDecoded(false), fFirstTime(true), fDeltaT(0),
-      fDataArray(0), fPrevData(0), fRate(0),
-      fClockChan(0), fNumChanMask(0), fNumChanShift(0),
-      fHasClock(false), fClockRate(0), fNormScaler(0)
+  GenScaler::GenScaler( UInt_t crate, UInt_t slot) :
+    VmeModule(crate, slot),
+    fIsDecoded(false), fFirstTime(true), fDeltaT(0.0),
+    fClockChan(0), fNumChanMask(0), fNumChanShift(0),
+    fHasClock(false), fClockRate(0), fNormScaler(nullptr),
+    firsttime(true), firstwarn(true)
   {
     fWordsExpect = 32;
     fNumChan = 0;
@@ -32,26 +31,26 @@ namespace Decoder {
   void GenScaler::Clear(Option_t* opt) {
     // Clear event-by-event data
     VmeModule::Clear(opt);
-    fIsDecoded=kFALSE;
+    fIsDecoded=false;
   }
 
   void GenScaler::GenInit()
   {
-    fHasClock = kFALSE;
-    fFirstTime = kTRUE;
-    fIsDecoded = kFALSE;
+    fHasClock = false;
+    fFirstTime = true;
+    fIsDecoded = false;
     fClockChan = -1;
     fClockRate = 0;
-    fNormScaler = 0;
+    fNormScaler = nullptr;
     fNumChanMask = 0xff;
     fNumChanShift = 0;
     fDeltaT = DEFAULT_DELTAT;  // a default time interval between readings
-    fDataArray = new UInt_t[fWordsExpect];
-    fPrevData = new UInt_t[fWordsExpect];
-    fRate = new Double_t[fWordsExpect];
-    memset(fDataArray, 0, fWordsExpect*sizeof(Int_t));
-    memset(fPrevData, 0, fWordsExpect*sizeof(Int_t));
-    memset(fRate, 0, fWordsExpect*sizeof(Double_t));
+    fDataArray.resize(fWordsExpect);
+    fPrevData.resize(fWordsExpect);
+    fRate.resize(fWordsExpect);
+    fDataArray.assign(fDataArray.size(), 0);
+    fPrevData.assign(fPrevData.size(), 0);
+    fRate.assign(fRate.size(), 0.0);
   }
 
   void GenScaler::SetBank(Int_t bank) {
@@ -63,13 +62,7 @@ namespace Decoder {
     }
   }
 
-  GenScaler::~GenScaler() {
-    delete [] fDataArray;
-    delete [] fPrevData;
-    delete [] fRate;
-  }
-
-  Int_t GenScaler::SetClock(Double_t deltaT, Int_t clockchan, Double_t clockrate) {
+  Int_t GenScaler::SetClock( Double_t deltaT, UInt_t clockchan, Double_t clockrate) {
     // Sets the clock for the time base
     // retcode:
     //     0   nothing wrong, but has no deltaT nor clock data. (a bit odd)
@@ -78,7 +71,7 @@ namespace Decoder {
     //     2   using deltaT, instead, for an approx time diff between readings
 
     Int_t retcode = 0;
-    fHasClock = kFALSE;
+    fHasClock = false;
     if (clockrate > 0) {
       if (fNormScaler) {
 	cout << "GenScaler:: WARNING:  Declaring this object to have"<<endl;
@@ -86,9 +79,9 @@ namespace Decoder {
 	cout << "  This makes no sense. "<<endl;
 	retcode = -1;
       }
-      fHasClock = kTRUE;
+      fHasClock = true;
     }
-    if (clockchan < 0 || clockchan >= fWordsExpect) {
+    if( clockchan >= fWordsExpect ) {
       cout << "GenScaler:: ERROR:  clock channel out of range "<<endl;
       retcode = -1;
     } else {
@@ -124,19 +117,20 @@ namespace Decoder {
     Int_t nfound=1;
     if (IsDecoded()) return nfound;
     if (fFirstTime) {
-      fFirstTime = kFALSE;
+      fFirstTime = false;
     } else {
       doload=1;
-      memcpy(fPrevData, fDataArray, fWordsExpect*sizeof(UInt_t));
+      fPrevData = fDataArray;
     }
     if ( !IsSlot(*evbuffer) ) return nfound;
     if (fDebugFile) *fDebugFile << "is slot 0x"<<hex<<*evbuffer<<dec<<" num chan "<<fNumChan<<endl;
     evbuffer++;
-    fIsDecoded = kTRUE;
-    for (Int_t i=0; i<fNumChan; i++) {
-      fDataArray[i] = *(evbuffer++);
-      nfound++;
-      if (fDebugFile) *fDebugFile << "   data["<<i<<"] = 0x"<<hex<<fDataArray[i]<<dec<<endl;
+    fIsDecoded = true;
+    fDataArray.assign( evbuffer, evbuffer+fNumChan );
+    nfound += fNumChan;
+    if (fDebugFile) {
+      for( UInt_t i = 0; i < fNumChan; i++ )
+        *fDebugFile << "   data[" << i << "] = 0x" << hex << fDataArray[i] << dec << endl;
     }
     if (doload) LoadRates();
     return nfound;
@@ -176,10 +170,10 @@ namespace Decoder {
     if (IsDecoded()) {
       Double_t dtime = GetTimeSincePrev();
       if (dtime==0) {
-	memset(fRate, 0, fWordsExpect*sizeof(Double_t));
+	fRate.assign(fRate.size(), 0);
 	return;
       }
-      for (Int_t i=0; i<fWordsExpect; i++) {
+      for( UInt_t i = 0; i < fWordsExpect; i++ ) {
 	// Check for scaler overflow
 	UInt_t diff;
 	if(fDataArray[i] < fPrevData[i]) {
@@ -192,7 +186,7 @@ namespace Decoder {
     }
   }
 
-  UInt_t GenScaler::GetData(Int_t chan) const {
+  UInt_t GenScaler::GetData( UInt_t chan) const {
     if (checkchan(chan)) {
       return fDataArray[chan];
     } else {
@@ -200,7 +194,7 @@ namespace Decoder {
     }
   }
 
-  Double_t GenScaler::GetRate(Int_t chan) const {
+  Double_t GenScaler::GetRate( UInt_t chan) const {
     if (checkchan(chan)) {
       return fRate[chan];
     } else {
@@ -229,57 +223,57 @@ namespace Decoder {
     *file << "Clock channel "<<fClockChan<<"   clock rate "<<fClockRate<<endl;
     *file<<"  ----   Data  ---- "<<fWordsExpect<<endl;
     *file<<"Data now   //   previous    //   rate  "<<endl;
-    for (Int_t i=0; i<fWordsExpect; i++) {
+    for( UInt_t i = 0; i < fWordsExpect; i++ ) {
       *file << "  0x"<<hex<<fDataArray[i]<<"   0x"<<fPrevData[i]<<dec<<"   "<<fRate[i]<<endl;
     }
   }
 
-  Bool_t GenScaler::IsSlot(UInt_t rdata) {
+  Bool_t GenScaler::IsSlot( UInt_t rdata ) {
     /// Check if this word is the header for the slot we are looking for
     /// Get the number of channels in this module from the header and
     /// save so that bank version of LoadSlot can skip over this module if
     /// it is not the correct one.
-    Bool_t result;
-    static Bool_t firsttime=kTRUE;
-    static Bool_t firstwarn=kTRUE;
-    result = ((rdata & fHeaderMask)==fHeader);
-    fNumChan = (rdata&fNumChanMask)>>fNumChanShift;
-    if (fNumChan == 0) {
-      fNumChan=fgNumChanDefault;
-      if (firsttime) {
-	firsttime = kFALSE;
-	cout << "Warning::GenScaler:: (" << fCrate << "," << fSlot << ") "
-	  "using default num "<<fgNumChanDefault << " channels" << endl;
+    if( (rdata & fHeaderMask) != fHeader )
+      return false;
+    // This is a header word. Try extracting the number of channels.
+    fNumChan = (rdata & fNumChanMask) >> fNumChanShift;
+    if( fNumChan == 0 ) {
+      fNumChan = fgNumChanDefault;
+      if( firsttime ) {
+        firsttime = false;
+        cout << "Warning::GenScaler:: (" << fCrate << "," << fSlot
+             << ") using default num " << fgNumChanDefault << " channels"
+             << endl;
       }
     }
-    if (result && fNumChan != fWordsExpect) {
-      if (fNumChan > fWordsExpect)
-	fNumChan = fWordsExpect;
+    if( fNumChan != fWordsExpect ) {
+      if( fNumChan > fWordsExpect )
+        fNumChan = fWordsExpect;
 
       // Print warning once to alert user to potential problems,
       // or for every suspect event if debugging enabled
-      if( firstwarn && fNumChan!=16 && fNumChan!=fWordsExpect) {
-	cout << "GenScaler:: ERROR:  (" << fCrate << "," << fSlot << ") "
-	     << "inconsistent number of chan."<<endl;
-	//        DoPrint();
-	firstwarn = false;
+      if( firstwarn && fNumChan != 16 && fNumChan != fWordsExpect ) {
+        cout << "GenScaler:: ERROR:  (" << fCrate << "," << fSlot << ") "
+             << "inconsistent number of chan." << endl;
+        //        DoPrint();
+        firstwarn = false;
       }
     }
-    return result;
+    return true;
   }
 
-  Int_t GenScaler::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, const UInt_t *pstop)
+UInt_t GenScaler::LoadSlot( THaSlotData* sldat, const UInt_t* evbuffer, const UInt_t* pstop )
   {
     // This is a simple, default method for loading a slot
-    const UInt_t *p = evbuffer;
+    const UInt_t* p = evbuffer;
     Clear();
-    while ( p < pstop ) {
-      if (IsSlot( *p )) {
+    while( p < pstop ) {
+      if( IsSlot(*p) ) {
 	if (fDebugFile) *fDebugFile << "GenScaler:: Loadslot "<<endl;
 	if (!fHeader) cerr << "GenScaler::LoadSlot::ERROR : no header ?"<<endl;
 	Decode(p);
-	for (Int_t ichan = 0; ichan < fNumChan; ichan++) {
-	  sldat->loadData(ichan, fDataArray[ichan], fDataArray[ichan]);
+        for( UInt_t ichan = 0; ichan < fNumChan; ichan++ ) {
+          sldat->loadData(ichan, fDataArray[ichan], fDataArray[ichan]);
 	}
 	fWordsSeen = fNumChan;
 	return fWordsSeen;
@@ -289,29 +283,28 @@ namespace Decoder {
     return 0;
   }
 
-  Int_t GenScaler::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, Int_t pos, Int_t len) {
+  UInt_t GenScaler::LoadSlot( THaSlotData *sldat, const UInt_t* evbuffer, UInt_t pos, UInt_t len) {
     /// Fill data structures of this class, utilizing bank structure
     /// Read until out of data or until decode says that the slot is finished
     /// len = ndata in event, pos = word number for block header in event
     fWordsSeen = 0;
     Clear();
-    Int_t index = 0;
 
     // How can set set this just once?
     //    fHeader = fSlot << 8;
     //    fHeaderMask = 0x3f00;
 
     while(fWordsSeen < len) {
-      index = pos + fWordsSeen;
-      if(IsSlot(evbuffer[index])) {
-	Decode(&evbuffer[index]);
-	for (Int_t ichan = 0; ichan < fNumChan; ichan++) {
-	  sldat->loadData(ichan, fDataArray[ichan], fDataArray[ichan]);
-	}
-	fWordsSeen += (fNumChan+1);
-	break;
+      UInt_t index = pos + fWordsSeen;
+      if( IsSlot(evbuffer[index]) ) {
+        Decode(&evbuffer[index]);
+        for( UInt_t ichan = 0; ichan < fNumChan; ichan++ ) {
+          sldat->loadData(ichan, fDataArray[ichan], fDataArray[ichan]);
+        }
+        fWordsSeen += (fNumChan + 1);
+        break;
       }
-      fWordsSeen += (fNumChan+1); // Skip to next header
+      fWordsSeen += (fNumChan + 1); // Skip to next header
     }
     return fWordsSeen;
   }

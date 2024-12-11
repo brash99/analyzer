@@ -1,7 +1,7 @@
 //*-- Author:  Ole Hansen<mailto:ole@jlab.org>; Jefferson Lab; 5-Jul-2014
 //
-#ifndef __SimDecoder_h
-#define __SimDecoder_h
+#ifndef Podd_SimDecoder_h_
+#define Podd_SimDecoder_h_
 
 /////////////////////////////////////////////////////////////////////
 //
@@ -13,12 +13,9 @@
 
 #include "THaEvData.h"
 #include "THaAnalysisObject.h"
+#include "DataType.h"  // for kBig
 #include "TClonesArray.h"
 #include "TVector3.h"
-
-#ifndef KBIG
-#define KBIG THaAnalysisObject::kBig
-#endif
 
 namespace Podd {
 
@@ -37,12 +34,12 @@ public:
 	   const TVector3& vertex, const TVector3& momentum );
   MCTrack();
 
-  Double_t VX()     { return fOrigin.X(); }
-  Double_t VY()     { return fOrigin.Y(); }
-  Double_t VZ()     { return fOrigin.Z(); }
-  Double_t P()      { return fMomentum.Mag(); }
-  Double_t PTheta() { return fMomentum.Theta(); }
-  Double_t PPhi()   { return fMomentum.Phi(); }
+  Double_t VX() const     { return fOrigin.X(); }
+  Double_t VY() const     { return fOrigin.Y(); }
+  Double_t VZ() const     { return fOrigin.Z(); }
+  Double_t P()  const     { return fMomentum.Mag(); }
+  Double_t PTheta() const { return fMomentum.Theta(); }
+  Double_t PPhi() const   { return fMomentum.Phi(); }
 
   virtual void Print( const Option_t* opt="" ) const;
 
@@ -87,7 +84,7 @@ public:
   MCHitInfo() : fMCTrack(0), fContam(0), fMCPos(0), fMCTime(0) {}
   MCHitInfo( Int_t mctrk, Double_t mcpos, Double_t time, Int_t contam = 0 )
     : fMCTrack(mctrk), fContam(contam), fMCPos(mcpos), fMCTime(time) {}
-  virtual ~MCHitInfo() {}
+  virtual ~MCHitInfo() = default;
 
   void MCPrint() const;
   void MCClear() { fMCTrack = fContam = 0; fMCPos = fMCTime = 0; }
@@ -105,18 +102,18 @@ public:
 class MCTrackPoint : public TObject {
 public:
   MCTrackPoint() : fMCTrack(0), fPlane(-1), fType(-1), fStatus(0), fNFound(0),
-		   fClustSize(0), fMCPoint(KBIG,KBIG,KBIG), fMCP(KBIG,KBIG,KBIG),
-		   fMCTime(KBIG), fDeltaE(KBIG), fDeflect(KBIG), fToF(KBIG),
-		   fHitResid(KBIG), fTrackResid(KBIG)  {}
+		   fClustSize(0), fMCPoint(kBig,kBig,kBig), fMCP(kBig,kBig,kBig),
+		   fMCTime(kBig), fDeltaE(kBig), fDeflect(kBig), fToF(kBig),
+		   fHitResid(kBig), fTrackResid(kBig)  {}
   MCTrackPoint( Int_t mctrk, Int_t plane, Int_t type, const TVector3& point,
 		const TVector3& pvect )
     : fMCTrack(mctrk), fPlane(plane), fType(type), fStatus(0), fNFound(0),
-      fClustSize(0), fMCPoint(point), fMCP(pvect), fMCTime(KBIG), fDeltaE(KBIG),
-      fDeflect(KBIG), fToF(KBIG), fHitResid(KBIG), fTrackResid(KBIG)  {}
-  virtual ~MCTrackPoint() {}
+      fClustSize(0), fMCPoint(point), fMCP(pvect), fMCTime(kBig), fDeltaE(kBig),
+      fDeflect(kBig), fToF(kBig), fHitResid(kBig), fTrackResid(kBig)  {}
+  virtual ~MCTrackPoint() = default;
 
   virtual Int_t  Compare( const TObject* obj ) const;
-  virtual Bool_t IsSortable() const { return kTRUE; }
+  virtual Bool_t IsSortable() const { return true; }
   virtual void   Print( Option_t* opt ) const;
 
   Double_t X()         const { return fMCPoint.X(); }
@@ -177,14 +174,14 @@ class SimDecoder : public THaEvData {
   Double_t GetWeight() const { return fWeight; }
 
   TObject* GetMCHit( Int_t i )   const {
-    return (fMCHits) ? fMCHits->UncheckedAt(i) : 0;
+    return (fMCHits) ? fMCHits->UncheckedAt(i) : nullptr;
   }
   TObject* GetMCTrack( Int_t i ) const {
-    return (fMCTracks) ? fMCTracks->UncheckedAt(i) : 0;
+    return (fMCTracks) ? fMCTracks->UncheckedAt(i) : nullptr;
   }
   MCTrackPoint* GetMCPoint( Int_t i ) const {
     return (fMCPoints) ?
-      static_cast<Podd::MCTrackPoint*>(fMCPoints->UncheckedAt(i)) : 0;
+      static_cast<Podd::MCTrackPoint*>(fMCPoints->UncheckedAt(i)) : nullptr;
   }
   Int_t    GetNMCHits()    const {
     return (fMCHits) ? fMCHits->GetLast()+1 : 0;
@@ -204,8 +201,6 @@ protected:
   TClonesArray*  fMCTracks;   //-> MC physics tracks
   TClonesArray*  fMCPoints;   //-> MC physics track points
   Bool_t         fIsSetup;    // DefineVariables has run
-
-  virtual Int_t init_cmap_openfile( FILE*& fi, TString& fname );
 
   ClassDef(SimDecoder,0) // Generic decoder for simulation data
 };

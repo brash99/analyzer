@@ -25,34 +25,31 @@
 #include "THaGlobals.h"
 #include "THaAnalyzer.h"
 //#include "THaFileDB.h"
-#include "THaTextvars.h"
+#include "Textvars.h"   // for gHaTextvars
 #include "ha_compiledata.h"
 #include <cstring>
 #include <sstream>
-
-//#include "TGXW.h"
-//#include "TVirtualX.h"
+#include <iomanip>
 
 using namespace std;
 
-THaVarList*  gHaVars     = NULL;  // List of symbolic analyzer variables
-THaCutList*  gHaCuts     = NULL;  // List of global analyzer cuts/tests
-TList*       gHaApps     = NULL;  // List of Apparatuses
-TList*       gHaPhysics  = NULL;  // List of physics modules
-TList*       gHaEvtHandlers  = NULL;  // List of event handlers
-THaRunBase*  gHaRun      = NULL;  // The currently active run
-TClass*      gHaDecoder  = NULL;  // Class(!) of decoder to use
-THaDB*       gHaDB       = NULL;  // Database system to use
-THaTextvars* gHaTextvars = NULL;  // Text variable definitions
+THaVarList*  gHaVars     = nullptr;  // List of symbolic analyzer variables
+THaCutList*  gHaCuts     = nullptr;  // List of global analyzer cuts/tests
+TList*       gHaApps     = nullptr;  // List of Apparatuses
+TList*       gHaPhysics  = nullptr;  // List of physics modules
+TList*       gHaEvtHandlers  = nullptr;  // List of event handlers
+THaRunBase*  gHaRun      = nullptr;  // The currently active run
+TClass*      gHaDecoder  = nullptr;  // Class(!) of decoder to use
+THaDB*       gHaDB       = nullptr;  // Database system to use
 
-THaInterface* THaInterface::fgAint = NULL;  // Pointer to this interface
+THaInterface* THaInterface::fgAint = nullptr;  // Pointer to this interface
 
 static TString fgTZ;
 
 //_____________________________________________________________________________
 THaInterface::THaInterface( const char* appClassName, int* argc, char** argv,
 			    void* options, int numOptions, Bool_t noLogo ) :
-  TRint( appClassName, argc, argv, options, numOptions, kTRUE )
+  TRint( appClassName, argc, argv, options, numOptions, true )
 {
   // Create the Hall A analyzer application environment. The THaInterface
   // environment provides an interface to the the interactive ROOT system
@@ -65,9 +62,9 @@ THaInterface::THaInterface( const char* appClassName, int* argc, char** argv,
   }
 
   if( !noLogo )
-    PrintLogo();
+    THaInterface::PrintLogo();
 
-  SetPrompt("analyzer [%d] ");
+  THaInterface::SetPrompt("analyzer [%d] ");
   gHaVars    = new THaVarList;
   gHaCuts    = new THaCutList( gHaVars );
   gHaApps    = new TList;
@@ -77,7 +74,7 @@ THaInterface::THaInterface( const char* appClassName, int* argc, char** argv,
   gHaDecoder = Podd::CodaRawDecoder::Class();
   // File-based database by default
   //  gHaDB      = new THaFileDB();
-  gHaTextvars = new THaTextvars;
+  gHaTextvars = new Podd::Textvars;
 
   // Set the maximum size for a file written by Podd contained by the TTree
   //  putting it to 1.5 GB, down from the default 1.9 GB since something odd
@@ -91,7 +88,7 @@ THaInterface::THaInterface( const char* appClassName, int* argc, char** argv,
   // back to the compile-time directories (which may have moved!)
   TString s = gSystem->Getenv("ANALYZER");
   if( s.IsNull() ) {
-    s = HA_INCLUDEPATH;
+    s = HA_INCLUDEPATH "";
   } else {
     // Give preference to $ANALYZER/include
     TString p = s+"/include";
@@ -147,71 +144,61 @@ THaInterface::~THaInterface()
     // Clean up the analyzer object if defined
     delete THaAnalyzer::GetInstance();
     // Delete all global lists and objects contained in them
-    delete gHaTextvars; gHaTextvars=0;
-    //    delete gHaDB;           gHaDB = 0;
-    delete gHaPhysics;   gHaPhysics=0;
-    delete gHaEvtHandlers;  gHaEvtHandlers=0;
-    delete gHaApps;         gHaApps=0;
-    delete gHaVars;         gHaVars=0;
-    delete gHaCuts;         gHaCuts=0;
-    fgAint = NULL;
+    delete gHaTextvars; gHaTextvars=nullptr;
+    //    delete gHaDB;           gHaDB = nullptr;
+    delete gHaPhysics;   gHaPhysics=nullptr;
+    delete gHaEvtHandlers;  gHaEvtHandlers=nullptr;
+    delete gHaApps;         gHaApps=nullptr;
+    delete gHaVars;         gHaVars=nullptr;
+    delete gHaCuts;         gHaCuts=nullptr;
+    fgAint = nullptr;
   }
 }
 
 //_____________________________________________________________________________
-#if ROOT_VERSION_CODE < ROOT_VERSION(5,18,0)
-void THaInterface::PrintLogo()
-#else
 void THaInterface::PrintLogo( Bool_t lite )
-#endif
 {
    // Print the Hall A analyzer logo on standard output.
 
-   Int_t iday,imonth,iyear,mille;
    static const char* months[] = {"???","Jan","Feb","Mar","Apr","May",
                                   "Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
    const char* root_version = gROOT->GetVersion();
    Int_t idatqq = gROOT->GetVersionDate();
-   iday   = idatqq%100;
-   imonth = (idatqq/100)%100;
+   Int_t iday   = idatqq%100;
+   Int_t imonth = (idatqq/100)%100;
    if( imonth < 1 || imonth > 12 ) // should never happen, but to be safe,
      imonth = 0;                   // print "???"
-   iyear  = (idatqq/10000);
+   Int_t iyear  = (idatqq/10000);
+   Int_t mille = iyear;
    if ( iyear < 90 )
      mille = 2000 + iyear;
    else if ( iyear < 1900 )
      mille = 1900 + iyear;
-   else
-     mille = iyear;
-   char* root_date = Form("%s %d %4d",months[imonth],iday,mille);
+   ostringstream ostr;
+   ostr << setw(2) << setfill('0') << iday << setfill(' ');
+   ostr << " " << months[imonth] << " " << mille;
+   TString tmp(ostr.str().c_str());
+   const char* root_date = tmp.Data();
 
-#if ROOT_VERSION_CODE >= ROOT_VERSION(5,18,0)
    if( !lite ) {
-#endif
      Printf("  ************************************************");
      Printf("  *                                              *");
      Printf("  *            W E L C O M E  to  the            *");
      Printf("  *       H A L L A   C++  A N A L Y Z E R       *");
      Printf("  *                                              *");
-     Printf("  *  Release %16s %18s *",HA_VERSION,HA_DATE);
-     Printf("  *  Based on ROOT %8s %20s *",root_version,root_date);
-     //   Printf("  *             Development version              *");
+     Printf("  *  Release %16s %18s *", HA_VERSION "", GetHaDate());
+     Printf("  *  Based on ROOT %10s %18s *", root_version, root_date);
+     if( strstr(HA_VERSION "", "-dev") || strstr(HA_VERSION "", "alpha") ||
+         strstr(HA_VERSION "", "beta") || strstr(HA_VERSION "", "rc") )
+       Printf("  *             Development version              *");
      Printf("  *                                              *");
      Printf("  *            For information visit             *");
-     Printf("  *        http://hallaweb.jlab.org/podd/        *");
+     Printf("  * https://redmine.jlab.org/projects/podd/wiki/ *");
      Printf("  *                                              *");
      Printf("  ************************************************");
-#if ROOT_VERSION_CODE >= ROOT_VERSION(5,18,0)
    }
-#endif
-
-#ifdef R__UNIX
-   //   if (!strcmp(gGXW->GetName(), "X11TTF"))
-   //   Printf("\nFreeType Engine v1.1 used to render TrueType fonts.");
-#endif
 
    gInterpreter->PrintIntro();
-
 }
 
 //_____________________________________________________________________________
@@ -225,7 +212,45 @@ TClass* THaInterface::GetDecoder()
 const char* THaInterface::GetVersion()
 {
   // Get software version
-  return HA_VERSION;
+  return HA_VERSION "";
+}
+
+//_____________________________________________________________________________
+TString THaInterface::extract_short_date( const char* long_date )
+{
+  // Extract date from git format=%cD long date string. For example,
+  // "Tue, 29 Mar 2022 22:29:10 -0400" -> "29 Mar 2022"
+  TString d{long_date};
+  Ssiz_t pos = 0, i = 0, start = 0;
+  while( (pos = d.Index(" ", pos)) != kNPOS ) {
+    ++i;
+    if( i == 4 )
+      return d(start, pos-start);
+    while( d[++pos] == ' ' ); // d[d.Length()] is always '\0', so this is safe
+    if( i == 1 )
+      start = pos;
+  }
+  return d;
+}
+
+//_____________________________________________________________________________
+const char* THaInterface::GetHaDate()
+{
+  static TString ha_date;
+
+  if( ha_date.IsNull() ) {
+    bool use_buildtime = true;
+    size_t len = strlen(HA_GITREV "");
+    if( len > 0 ) {
+      const char* gitrev = HA_GITREV "";
+      use_buildtime = (len > 6 && strcmp(gitrev + len - 6, "-dirty") == 0);
+    }
+    if( use_buildtime )
+      ha_date = extract_short_date(HA_BUILDTIME "");
+    else
+      ha_date = extract_short_date(HA_SOURCETIME "");
+  }
+  return ha_date.Data();
 }
 
 //_____________________________________________________________________________
@@ -237,11 +262,14 @@ const char* THaInterface::GetVersionString()
 
   if( version_string.IsNull() ) {
     ostringstream ostr;
-    ostr << "Podd " << HA_VERSION << " " << HA_PLATFORM;
-    if( strlen(HA_GITREV) > 0 )
-      ostr << " git @" << HA_GITREV;
-    if( strlen(HA_ROOTVERS) )
-      ostr << " ROOT " << HA_ROOTVERS;
+    ostr << "Podd " << HA_VERSION "";
+    if( strlen(HA_GITREV "") > 0 )
+      ostr << " git@" << HA_GITREV "";
+    ostr << " " << GetHaDate() << endl;
+    ostr << "Built for " << HA_OSVERS "";
+    ostr << " using " << HA_CXXSHORTVERS "";
+    if( strlen(HA_ROOTVERS "") )
+      ostr << ", ROOT " << HA_ROOTVERS "";
     version_string = ostr.str().c_str();
   }
   return version_string.Data();
@@ -252,20 +280,20 @@ TClass* THaInterface::SetDecoder( TClass* c )
 {
   // Set the type of decoder to be used. Make sure the specified class
   // actually inherits from the standard THaEvData decoder.
-  // Returns the decoder class (i.e. its argument) or NULL if error.
+  // Returns the decoder class (i.e. its argument) or nullptr if error.
+
+  const char* const here = "THaInterface::SetDecoder";
 
   if( !c ) {
-    ::Error("THaInterface::SetDecoder", "argument is NULL");
-    return NULL;
+    ::Error(here, "argument is nullptr");
+    return nullptr;
   }
   if( !c->InheritsFrom("THaEvData")) {
-    ::Error("THaInterface::SetDecoder",
-	    "decoder class must inherit from THaEvData");
-    return NULL;
+    ::Error(here, "decoder class must inherit from THaEvData");
+    return nullptr;
   }
 
-  gHaDecoder = c;
-  return gHaDecoder;
+  return gHaDecoder = c;
 }
 
 //_____________________________________________________________________________
@@ -275,9 +303,6 @@ const char* THaInterface::SetPrompt( const char* newPrompt )
   // interpreter prompt for every line without respect to any user-set
   // default prompt.
 
-#if ROOT_VERSION_CODE < ROOT_VERSION(6,0,0)
-  return TRint::SetPrompt(newPrompt);
-#else
   TString s;
   if( newPrompt ) {
     s = newPrompt;
@@ -285,7 +310,6 @@ const char* THaInterface::SetPrompt( const char* newPrompt )
       s.Replace(0,4,"analyzer");
   }
   return TRint::SetPrompt(s.Data());
-#endif
 }
 
 //_____________________________________________________________________________

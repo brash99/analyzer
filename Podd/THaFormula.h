@@ -8,13 +8,7 @@
 //////////////////////////////////////////////////////////////////////////
 
 #include "RVersion.h"
-
-#if ROOT_VERSION_CODE < 394240
-#include "TFormula.h"
-#else
 #include "v5/TFormula.h"
-#endif
-
 #include "THaGlobals.h"
 #include <vector>
 #include <iostream>
@@ -24,18 +18,14 @@ class THaCutList;
 class THaVar;
 
 
-#if ROOT_VERSION_CODE < 394240
-class THaFormula : public TFormula {
-#else
 class THaFormula : public ROOT::v5::TFormula {
-#endif
 
 public:
   static const Option_t* const kPRINTFULL;
   static const Option_t* const kPRINTBRIEF;
 
   THaFormula();
-  THaFormula( const char* name, const char* formula, Bool_t do_register=kTRUE,
+  THaFormula( const char* name, const char* formula, Bool_t do_register=true,
 	      const THaVarList* vlst=gHaVars, const THaCutList* clst=gHaCuts );
   THaFormula( const THaFormula& rhs );
   THaFormula& operator=( const THaFormula& rhs );
@@ -66,11 +56,6 @@ public:
           void        SetList( const THaVarList* lst )    { fVarList = lst; }
           void        SetCutList( const THaCutList* lst ) { fCutList = lst; }
 
-#if ROOT_VERSION_CODE >= 331529 && ROOT_VERSION_CODE < 334336// 5.15/09-5.26/00
-  // Workaround for buggy TFormula
-  virtual TString     GetExpFormula( Option_t* opt="" ) const;
-#endif
-
 protected:
 
   enum {
@@ -86,17 +71,16 @@ protected:
                         kCutScaler, kCutNCalled }; // These for hcana
 
   virtual Int_t       DefinedCutWithType( TString& variable, EVariableType type );
-  struct FVarDef_t {
+  class FVarDef_t {
+  public:
     EVariableType type;                //Type of variable in the formula
     void*         obj;                 //Pointer to the respective object
     Int_t         index;               //Linear index into array, if fixed-size
     FVarDef_t( EVariableType t, void* p, Int_t i ) : type(t), obj(p), index(i) {}
     FVarDef_t( const FVarDef_t& rhs );
     FVarDef_t& operator=( const FVarDef_t& rhs );
-#if __cplusplus >= 201103L
     FVarDef_t( FVarDef_t&& rhs ) noexcept;
     FVarDef_t& operator=( FVarDef_t&& rhs ) noexcept;
-#endif
     ~FVarDef_t();
   };
   std::vector<FVarDef_t> fVarDef;      //Global variables referenced in formula
@@ -108,7 +92,7 @@ protected:
           Int_t     GetNdataUnchecked() const;
           Int_t     Init( const char* name, const char* expression );
   virtual Bool_t    IsString( Int_t oper ) const;
-  virtual void      RegisterFormula( Bool_t add = kTRUE );
+  virtual void      RegisterFormula( Bool_t add = true );
 
   ClassDef(THaFormula,0)  //Formula defined on list of variables
 };
@@ -121,7 +105,7 @@ Double_t THaFormula::EvalInstanceUnchecked( Int_t instance )
   if( fNoper == 1 && fVarDef.size() == 1 )
     return DefinedValue(0);
   else
-    return EvalPar(0);
+    return EvalPar(nullptr);
 }
 
 #endif

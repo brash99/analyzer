@@ -14,7 +14,7 @@ struct RVarDef;
 class THaVertexModule {
   
 public:
-  virtual ~THaVertexModule();
+  virtual ~THaVertexModule() = default;
   
   virtual const TVector3&   GetVertex()      const { return fVertex; }
   virtual const TVector3&   GetVertexError() const { return fVertexError; }
@@ -30,7 +30,7 @@ protected:
 
   THaVertexModule();
 
-  ClassDef(THaVertexModule,0)   //ABC for a vertex module
+  ClassDef(THaVertexModule,1)   //ABC for a vertex module
 
 };
 

@@ -13,23 +13,20 @@ using namespace std;
 
 namespace Decoder {
 
-VmeModule::VmeModule(Int_t crate, Int_t slot) : Module(crate,slot) {
-}
-
-VmeModule::~VmeModule() {
+VmeModule::VmeModule(UInt_t crate, UInt_t slot) : Module(crate,slot) {
 }
 
 Bool_t VmeModule::IsSlot(UInt_t rdata) {
   // Simplest version of IsSlot relies on a unique header.
   if ((rdata & fHeaderMask)==fHeader) {
     fWordsExpect = (rdata & fWdcntMask)>>fWdcntShift;
-    return kTRUE;
+    return true;
   }
-  return kFALSE;
+  return false;
 }
 
-Int_t VmeModule::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer,
-			  const UInt_t *pstop)
+UInt_t VmeModule::LoadSlot( THaSlotData *sldat, const UInt_t* evbuffer,
+                            const UInt_t *pstop)
 {
   // This is a simple, default method for loading a slot
   const UInt_t *p = evbuffer;
@@ -41,17 +38,16 @@ Int_t VmeModule::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer,
   if (!fHeader) cerr << "Module::LoadSlot::ERROR : no header ?"<<endl;
   fWordsSeen=0;
   while (IsSlot( *p )) {
-    if (p >= pstop) break;
     if (fDebugFile) *fDebugFile << "IsSlot ... data = "<<*p<<endl;
     p++;
+    if (p > pstop) break;
     Decode(p);
-    for (size_t ichan = 0, nchan = GetNumChan(); ichan < nchan; ichan++) {
-      Int_t mdata,rdata;
+    for( UInt_t ichan = 0, nchan = GetNumChan(); ichan < nchan; ichan++ ) {
       fWordsSeen++;
       p++;
-      if (p >= pstop) break;
-      rdata = *p;
-      mdata = rdata;
+      if (p > pstop) break;
+      UInt_t rdata = *p;
+      UInt_t mdata = rdata;
       sldat->loadData(ichan, mdata, rdata);
       if (ichan < fData.size()) fData[ichan]=rdata;
     }

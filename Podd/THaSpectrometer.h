@@ -15,13 +15,14 @@
 #include "TRotation.h"
 #include "THaParticleInfo.h"
 #include "THaPidDetector.h"
+#include <cassert>
 
 class THaTrack;
 class TList;
 class THaCut;
 
 class THaSpectrometer : public THaApparatus, public THaTrackingModule,
-			public THaVertexModule {
+                        public THaVertexModule {
   
 public:
   virtual ~THaSpectrometer();
@@ -30,6 +31,7 @@ public:
   virtual void             Clear( Option_t* opt="");
   virtual Int_t            CoarseTrack();
   virtual Int_t            CoarseReconstruct();
+  virtual EStatus          Init( const TDatime& run_time );
   virtual Int_t            Track();
   virtual Int_t            Reconstruct();
   virtual Int_t            CalcPID();
@@ -38,17 +40,16 @@ public:
 
   // Auxiliary functions
   virtual Int_t            AddDetector( THaDetector* det, Bool_t quiet = false,
-					Bool_t first = false );
+                                        Bool_t first = false );
   virtual Int_t            AddPidParticle( const char* shortname, 
-					   const char* name,
-					   Double_t mass, Int_t charge = 0 );
+                                           const char* name,
+                                           Double_t mass, Int_t charge = 0 );
   virtual void             DefinePidParticles();
-  virtual Int_t            DefineVariables( EMode mode = kDefine );
           THaTrack*        GetGoldenTrack() const { return fGoldenTrack; }
           Int_t            GetNpidParticles() const;
           Int_t            GetNpidDetectors() const;
-  const   THaParticleInfo* GetPidParticleInfo( Int_t i ) const;
-  const   THaPidDetector*  GetPidDetector( Int_t i ) const;
+          THaParticleInfo* GetPidParticleInfo( Int_t i ) const;
+          THaPidDetector*  GetPidDetector( Int_t i ) const;
           Int_t            GetNTracks()  const { return fTracks->GetLast()+1; }
           TClonesArray*    GetTracks()   const { return fTracks; }
           TClonesArray*    GetTrackPID() const { return fTrackPID; }
@@ -58,7 +59,7 @@ public:
           Bool_t           IsDone( UInt_t stage ) const;
           Bool_t           IsPID() const       { return fPID; }
           void             SetGoldenTrack( THaTrack* t ) { fGoldenTrack = t; }
-          void             SetPID( Bool_t b = kTRUE )    { fPID = b; }
+          void             SetPID( Bool_t b = true )    { fPID = b; }
 
   // The following is specific to small-acceptance pointing spectrometers
   // using spectrometer-specific coordinates such as TRANSPORT
@@ -73,18 +74,18 @@ public:
           Double_t         GetCollDist() const { return fCollDist; }
 
           void             SetCentralAngles( Double_t th, Double_t ph,
-					     Bool_t bend_down );
+                                             Bool_t bend_down );
 
   virtual void             TrackToLab( THaTrack& track, TVector3& pvect ) const;
   virtual void             TransportToLab( Double_t p, Double_t th, 
-					   Double_t ph, TVector3& pvect ) const;
+                                           Double_t ph, TVector3& pvect ) const;
   virtual void             LabToTransport( const TVector3& vertex, 
-					   const TVector3& pvect, 
-					   TVector3& tvertex, 
-					   Double_t* ray ) const;
+                                           const TVector3& pvect,
+                                           TVector3& tvertex,
+                                           Double_t* ray ) const;
           void             LabToTransport( const TVector3& vertex, 
-					   const TVector3& pvect, 
-					   Double_t* ray ) const;
+                                           const TVector3& pvect,
+                                           Double_t* ray ) const;
   enum EStagesDone {
     kCoarseTrack = BIT(0),
     kCoarseRecon = BIT(1),
@@ -103,7 +104,6 @@ protected:
   TObjArray*      fPidDetectors;          //PID detectors
   TObjArray*      fPidParticles;          //Particles for which we want PID
   THaTrack*       fGoldenTrack;           //Golden track within fTracks
-  Bool_t          fPID;                   //PID enabled
 
   // The following is specific to small-acceptance pointing spectrometers
   TRotation       fToLabRot;              //Rotation matrix from TRANSPORT to lab
@@ -114,24 +114,24 @@ protected:
   Double_t        fThetaSph, fPhiSph;     //Central angles in spherical coords. (rad)
   Double_t        fSinThGeo, fCosThGeo;   //Sine and cosine of central angles
   Double_t        fSinPhGeo, fCosPhGeo;   // in geographical coordinates
-  Double_t        fSinThSph, fCosThSph;   //Sine and cosine of central angles in 
+  Double_t        fSinThSph, fCosThSph;   //Sine and cosine of central angles in
   Double_t        fSinPhSph, fCosPhSph;   // spherical coordinates
   Double_t        fPcentral;              //Central momentum (GeV)
   Double_t        fCollDist;              //Distance from collimator to target center (m)
 
+  // Status flags
   UInt_t          fStagesDone;            //Bitfield of completed analysis stages
+  Bool_t          fPID;                   //PID enabled
 
   // only derived classes can construct me
   THaSpectrometer( const char* name, const char* description );
 
+  virtual Int_t   DefineVariables( EMode mode = kDefine );
   virtual Int_t   ReadRunDatabase( const TDatime& date );
+  virtual void    ListInit();     // Initialize lists of detector types
+  virtual void    PidInit();      // Initialize PID structures
 
-private:
-  Bool_t          fListInit;      //Detector lists initialized
-
-  void            ListInit();     //Initializes lists of specialized detectors
-
-  ClassDef(THaSpectrometer,0)     //A generic spectrometer
+  ClassDef(THaSpectrometer,1)     // A generic spectrometer
 };
 
 
@@ -148,16 +148,17 @@ inline Int_t THaSpectrometer::GetNpidDetectors() const
 }
 
 //_____________________________________________________________________________
-inline const THaParticleInfo* THaSpectrometer::GetPidParticleInfo( Int_t i ) 
-  const
+inline THaParticleInfo* THaSpectrometer::GetPidParticleInfo( Int_t i ) const
 {
-  return static_cast<const THaParticleInfo*>( fPidParticles->At(i) );
+  assert(dynamic_cast<THaParticleInfo*>(fPidParticles->At(i)));
+  return static_cast<THaParticleInfo*>( fPidParticles->At(i) );
 }
 
 //_____________________________________________________________________________
-inline const THaPidDetector* THaSpectrometer::GetPidDetector( Int_t i ) const
+inline THaPidDetector* THaSpectrometer::GetPidDetector( Int_t i ) const
 {
-  return static_cast<const THaPidDetector*>( fPidDetectors->At(i) );
+  assert(dynamic_cast<THaPidDetector*>(fPidDetectors->At(i)));
+  return static_cast<THaPidDetector*>( fPidDetectors->At(i) );
 }
 
 //_____________________________________________________________________________
@@ -170,8 +171,8 @@ Bool_t THaSpectrometer::IsDone( UInt_t stage ) const
 //_____________________________________________________________________________
 inline
 void THaSpectrometer::LabToTransport( const TVector3& vertex,
-				      const TVector3& pvect,
-				      Double_t* ray ) const
+                                      const TVector3& pvect,
+                                      Double_t* ray ) const
 {
   TVector3 dummy;
   LabToTransport( vertex, pvect, dummy, ray );

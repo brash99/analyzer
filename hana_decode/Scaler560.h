@@ -16,10 +16,11 @@ class Scaler560 : public GenScaler {
 
 public:
 
-   Scaler560() {}
-   Scaler560(Int_t crate, Int_t slot);
-   virtual ~Scaler560();
+   Scaler560( UInt_t crate, UInt_t slot );
+   Scaler560() = default;
+   virtual ~Scaler560() = default;
 
+   using GenScaler::Init;
    virtual void Init();
 
 private:

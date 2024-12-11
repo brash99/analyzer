@@ -1,12 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 
 #----------------------------------------------------------------------------
-# Build utility programs by default unless we are a submodule
-if("${CMAKE_PROJECT_NAME}" STREQUAL "${PROJECT_NAME}")
-  option(${PROJECT_NAME_UC}_BUILD_UTILS "Build utility programs" ON)
-else()
-  option(${PROJECT_NAME_UC}_BUILD_UTILS "Build utility programs" OFF)
-endif()
+# Build utility programs by default
+option(${PROJECT_NAME_UC}_BUILD_UTILS "Build utility programs" OFF)
 
 #----------------------------------------------------------------------------
 # analyzer executable
@@ -24,7 +20,7 @@ target_compile_options(${ANALYZER}
   PRIVATE
   ${${PROJECT_NAME_UC}_DIAG_FLAGS_LIST}
   )
-if(${CMAKE_SYSTEM_NAME} MATCHES Linux)
+if(CMAKE_SYSTEM_NAME MATCHES Linux)
   # Linux (at least with g++) requires -fPIC even for the main program,
   # as we found out the hard way (see commit 20cf746)
   target_compile_options(${ANALYZER} PUBLIC -fPIC)

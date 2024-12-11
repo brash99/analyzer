@@ -22,33 +22,37 @@ public:
       fSlotMask(0), fSlotShift(0), fChanMask(0), fChanShift(0),
       fDataMask(0), fOptMask(0), fOptShift(0),
       fChan(0), fData(0), fRawData(0) {}
-   FastbusModule(Int_t crate, Int_t slot);
-   virtual ~FastbusModule();
+   FastbusModule( UInt_t crate, UInt_t slot );
+   virtual ~FastbusModule() = default;
 
    using Module::LoadSlot;
+   using Module::Init;
 
-   virtual Int_t Decode(const UInt_t *evbuffer);
+   virtual Int_t  Decode(const UInt_t *evbuffer);
    virtual Bool_t IsSlot(UInt_t rdata) { return (Slot(rdata)==fSlot); };
-   virtual Int_t LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, const UInt_t *pstop);
+   virtual UInt_t LoadSlot( THaSlotData *sldat, const UInt_t* evbuffer, const UInt_t *pstop);
    void DoPrint() const;
 
-   Int_t GetOpt(UInt_t rdata) { return Opt(rdata); };
+   UInt_t GetOpt( UInt_t rdata) const { return Opt(rdata); };
 
-   Int_t Slot(UInt_t rdata) { return (rdata>>fSlotShift); };
-   Int_t Chan(UInt_t rdata) { return (rdata&fChanMask)>>fChanShift; };
-   Int_t Data(UInt_t rdata) { return (rdata&fDataMask); };
-   Int_t Opt(UInt_t rdata) { return (rdata&fOptMask)>>fOptShift; };
+   UInt_t Slot(UInt_t rdata) const { return (rdata>>fSlotShift); };
+   UInt_t Chan(UInt_t rdata) const { return (rdata&fChanMask)>>fChanShift; };
+   UInt_t Data(UInt_t rdata) const { return (rdata&fDataMask); };
+   UInt_t Opt(UInt_t rdata) const { return (rdata&fOptMask)>>fOptShift; };
+
+  virtual void SetSlot( UInt_t crate, UInt_t slot, UInt_t header = 0,
+                        UInt_t mask = 0, Int_t modelnum = 0 );
 
 protected:
 
    Bool_t fHasHeader;
-   Int_t fSlotMask, fSlotShift;
-   Int_t fChanMask, fChanShift;
-   Int_t fDataMask;
-   Int_t fOptMask, fOptShift;
-   Int_t fChan, fData, fRawData;
-   virtual void Init();
+   UInt_t fSlotMask, fSlotShift;
+   UInt_t fChanMask, fChanShift;
+   UInt_t fDataMask;
+   UInt_t fOptMask, fOptShift;
+   UInt_t fChan, fData, fRawData;
 
+   virtual void Init();
 
 private:
 

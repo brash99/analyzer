@@ -18,7 +18,6 @@
 #include "THaParticleInfo.h"
 #include "THaTrackingDetector.h"
 #include "THaNonTrackingDetector.h"
-#include "THaPidDetector.h"
 #include "THaPIDinfo.h"
 #include "THaTrack.h"
 #include "TClass.h"
@@ -26,7 +25,6 @@
 #include "TMath.h"
 #include "TList.h"
 #include "VarDef.h"
-#include <cmath>
 
 #ifdef WITH_DEBUG
 #include <iostream>
@@ -35,23 +33,27 @@
 using namespace std;
 
 //_____________________________________________________________________________
-THaSpectrometer::THaSpectrometer( const char* name, const char* desc ) : 
-  THaApparatus( name,desc ), fGoldenTrack(NULL), 
-  fPID(kFALSE), fThetaGeo(0.0), fPhiGeo(0.0), fPcentral(1.0), fCollDist(0.0),
-  fStagesDone(0), fListInit(kFALSE)
+THaSpectrometer::THaSpectrometer( const char* name, const char* desc ) :
+  THaApparatus(name, desc),
+  fTracks{new TClonesArray("THaTrack", kInitTrackMultiplicity)},
+  fTrackPID{new TClonesArray("THaPIDinfo", kInitTrackMultiplicity)},
+  fTrackingDetectors{new TList},
+  fNonTrackingDetectors{new TList},
+  fPidDetectors{new TObjArray},
+  fPidParticles{new TObjArray},
+  fGoldenTrack{nullptr},
+  fThetaGeo{0.0}, fPhiGeo{0.0},   fThetaSph{0.0}, fPhiSph{0.0},
+  fSinThGeo{0.0}, fCosThGeo{1.0}, fSinPhGeo{0.0}, fCosPhGeo{1.0},
+  fSinThSph{0.0}, fCosThSph{1.0}, fSinPhSph{0.0}, fCosPhSph{1.0},
+  fPcentral{1.0},
+  fCollDist{0.0},
+  fStagesDone{0},
+  fPID{false}
 {
   // Constructor.
   // Protected. Can only be called by derived classes.
 
-  fTracks     = new TClonesArray( "THaTrack",   kInitTrackMultiplicity );
-  fTrackPID   = new TClonesArray( "THaPIDinfo", kInitTrackMultiplicity );
-  fTrackingDetectors    = new TList;
-  fNonTrackingDetectors = new TList;
-  fPidDetectors         = new TObjArray;
-  fPidParticles         = new TObjArray;
-
-  Clear();
-  DefinePidParticles();
+  THaSpectrometer::Clear();
 
   fProperties |= kNeedsRunDB;
 
@@ -62,22 +64,22 @@ THaSpectrometer::THaSpectrometer( const char* name, const char* desc ) :
 THaSpectrometer::~THaSpectrometer()
 {
   // Destructor. Delete the lists of specialized detectors.
-  // FIXME: delete tracks, pid, vertices too?
 
   fPidParticles->Delete();   //delete all THaParticleInfo objects
 
-  delete fPidParticles;          fPidParticles = 0;
-  delete fPidDetectors;          fPidDetectors = 0;
-  delete fNonTrackingDetectors;  fNonTrackingDetectors = 0;
-  delete fTrackingDetectors;     fTrackingDetectors = 0;
-  delete fTrackPID;              fTrackPID = 0;
-  delete fTracks;                fTracks = 0;
+  delete fPidParticles;          fPidParticles = nullptr;
+  delete fPidDetectors;          fPidDetectors = nullptr;
+  delete fNonTrackingDetectors;  fNonTrackingDetectors = nullptr;
+  delete fTrackingDetectors;     fTrackingDetectors = nullptr;
+  delete fTrackPID;              fTrackPID = nullptr;
+  delete fTracks;                fTracks = nullptr;
 
-  DefineVariables( kDelete );
+  RemoveVariables();
 }
 
 //_____________________________________________________________________________
-Int_t THaSpectrometer::AddDetector( THaDetector* pdet, Bool_t quiet, Bool_t first )
+Int_t THaSpectrometer::AddDetector( THaDetector* pdet, Bool_t quiet,
+                                    Bool_t first )
 {
   // Add a detector to the internal lists of spectrometer detectors.
   // Duplicate detector names are not allowed.
@@ -85,20 +87,23 @@ Int_t THaSpectrometer::AddDetector( THaDetector* pdet, Bool_t quiet, Bool_t firs
   // NOTE: The detector object must be allocated by the caller, but will be
   // deleted by the spectrometer. Do not delete detectors you've added
   // to an apparatus/spectrometer. Recommended: AddDetector( new MyDetector )
+  //
+  // NOTE: If an error occurs (wrong detector class, detector already exists),
+  // the passed detector is deleted and -1 is returned.
 
-  if( !pdet || !pdet->IsA()->InheritsFrom("THaSpectrometerDetector")) {
+  auto* sdet = dynamic_cast<THaSpectrometerDetector*>( pdet );
+  if( !sdet ) {
     if( !quiet )
       Error("AddDetector", "Detector is not a THaSpectrometerDetector. "
-	    "Detector not added.");
+	    "Detector not added. Detector object deleted.");
     delete pdet;
     return -1;
   }
   Int_t status = THaApparatus::AddDetector( pdet, quiet, first );
-  if( status != 0 ) return status;
+  if( status != 0 )
+    return status;
 
-  THaSpectrometerDetector* sdet = 
-    static_cast<THaSpectrometerDetector*>( pdet );
-
+  assert(sdet);
   if( sdet->IsTracking() )
     fTrackingDetectors->Add( sdet );
   else
@@ -130,13 +135,12 @@ Int_t THaSpectrometer::CalcPID()
   // This is just a loop over all tracks.
   // Called by Reconstruct().
 
-  THaTrack* theTrack;
-  THaPIDinfo* pid;
-
   for( int i = 0; i < fTracks->GetLast()+1; i++ ) {
-    if( (theTrack = static_cast<THaTrack*>( fTracks->At(i) ))) 
-      if( (pid = theTrack->GetPIDinfo() )) {
-	pid->CombinePID();
+    if( auto* theTrack = static_cast<THaTrack*>( fTracks->At(i) ) ) {
+      assert(dynamic_cast<THaTrack*>(theTrack));
+      if( THaPIDinfo* pid = theTrack->GetPIDinfo() ) {
+        pid->CombinePID();
+      }
     }
   }    
   return 0;
@@ -153,21 +157,48 @@ void THaSpectrometer::Clear( Option_t* opt )
   fTracks->Clear("C");
   TrkIfoClear();
   VertexClear();
-  fGoldenTrack = NULL;
+  fGoldenTrack = nullptr;
   fStagesDone = 0;
+}
+
+//_____________________________________________________________________________
+THaAnalysisObject::EStatus THaSpectrometer::Init( const TDatime& run_time )
+{
+  // Initialize spectrometer. First, ensure that the lists of detector types
+  // are in a consistent state. Then, do the Apparatus initialization,
+  // which reads our database and initializes the detectors. Finally, set up
+  // the PID structures if PID enabled.
+
+  ListInit();
+
+  EStatus ret = THaApparatus::Init(run_time);
+  if( ret )
+    return ret;
+
+  if( IsPID() )
+    PidInit();
+
+  // TODO: Set up vertex objects that can be associated with tracks?
+
+  return kOK;
 }
 
 //_____________________________________________________________________________
 void THaSpectrometer::DefinePidParticles()
 {
   // Define the default set of PID particles:
-  //  pion, kaon, proton
+  //  electron, pion, kaon, proton
+  //
+  // This spectrometer does not necessarily have to have PID detectors
+  // that can identify all of these types. This is essentially a list of
+  // convenient candidates for medium energy experiments.
 
   fPidParticles->Delete();    //make sure array is empty
 
-  AddPidParticle( "pi", "pion",   0.139, 0 );
-  AddPidParticle( "k",  "kaon",   0.4936, 0 );
-  AddPidParticle( "p",  "proton", 0.938, 1 );
+  AddPidParticle( "e",  "electron", 0.511e-3, -1 );
+  AddPidParticle( "pi", "pion",     0.139,     0 );
+  AddPidParticle( "k",  "kaon",     0.4936,    0 );
+  AddPidParticle( "p",  "proton",   0.938,     1 );
 }
 
 //_____________________________________________________________________________
@@ -175,9 +206,6 @@ Int_t THaSpectrometer::DefineVariables( EMode mode )
 {
   // Define/delete standard variables for a spectrometer (tracks etc.)
   // Can be overridden or extended by derived (actual) apparatuses
-
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
 
   RVarDef vars[] = {
     { "tr.n",    "Number of tracks",             "GetNTracks()" },
@@ -213,7 +241,7 @@ Int_t THaSpectrometer::DefineVariables( EMode mode )
     { "tr.beta",  "Beta of track",               "fTracks.THaTrack.GetBeta()"},
     { "tr.dbeta", "uncertainty of beta",         "fTracks.THaTrack.GetdBeta()"},
     { "status",   "Bits of completed analysis stages", "fStagesDone" },
-    { 0 }
+    { nullptr }
   };
 
   return DefineVarsFromList( vars, mode );
@@ -231,22 +259,20 @@ const TVector3& THaSpectrometer::GetVertex() const
 //_____________________________________________________________________________
 Bool_t THaSpectrometer::HasVertex() const
 {
-  return (fGoldenTrack) ? fGoldenTrack->HasVertex() : kFALSE;
+  return (fGoldenTrack) != nullptr && fGoldenTrack->HasVertex();
 }
 
 //_____________________________________________________________________________
 void THaSpectrometer::ListInit()
 {
-  // Initialize lists of specialized detectors. 
-  // Private function called by Reconstruct().
+  // Initialize lists of specialized detectors. Called by Init().
 
   fTrackingDetectors->Clear();
   fNonTrackingDetectors->Clear();
   fPidDetectors->Clear();
 
   TIter next(fDetectors);
-  while( THaSpectrometerDetector* theDetector = 
-	 static_cast<THaSpectrometerDetector*>( next() )) {
+  while( auto* theDetector = dynamic_cast<THaSpectrometerDetector*>( next() )) {
 
     if( theDetector->IsTracking() )
       fTrackingDetectors->Add( theDetector );
@@ -256,18 +282,24 @@ void THaSpectrometer::ListInit()
     if( theDetector->IsPid() )
       fPidDetectors->Add( theDetector );
   }
+}
 
-  // Set up PIDinfo and vertex objects that can be associated with tracks
+//_____________________________________________________________________________
+void THaSpectrometer::PidInit()
+{
+  // Initialize PID structures that can be associated with tracks
 
-  UInt_t ndet  = GetNpidDetectors();
+  // If not already done, set up this spectrometer's default PID particles
+  if( fPidParticles->IsEmpty() )
+    DefinePidParticles();
+
+  UInt_t ndet = GetNpidDetectors();
   UInt_t npart = GetNpidParticles();
-  TClonesArray& pid  = *fTrackPID;
 
-  for( int i = 0; i < kInitTrackMultiplicity; i++ ) {
-    new( pid[i] )  THaPIDinfo( ndet, npart );
+  // Set up initial set of PIDinfo objects
+  for( Int_t i = 0; i < kInitTrackMultiplicity; i++ ) {
+    new( (*fTrackPID)[i])  THaPIDinfo(ndet, npart);
   }
-  
-  fListInit = kTRUE;
 }
 
 //_____________________________________________________________________________
@@ -275,14 +307,12 @@ Int_t THaSpectrometer::CoarseTrack()
 {
   // Coarse Tracking: First step of spectrometer analysis
 
-  if( !fListInit )
-    ListInit();
-
   // 1st step: Coarse tracking.  This should be quick and dirty.
   // Any tracks found are put in the fTrack array.
   TIter next( fTrackingDetectors );
-  while( THaTrackingDetector* theTrackDetector =
+  while( auto* theTrackDetector =
 	 static_cast<THaTrackingDetector*>( next() )) {
+    assert(dynamic_cast<THaTrackingDetector*>(theTrackDetector));
 #ifdef WITH_DEBUG
     if( fDebug>1 ) cout << "Call CoarseTrack() for " 
 			<< theTrackDetector->GetName() << "... ";
@@ -305,12 +335,13 @@ Int_t THaSpectrometer::CoarseReconstruct()
   // This may include clustering and preliminary PID.
   // PID information is tacked onto the tracks as a THaPIDinfo object.
 
-  if( !IsDone(kCoarseTrack))
+  if( !IsDone(kCoarseTrack) )
     CoarseTrack();
 
   TIter next( fNonTrackingDetectors );
-  while( THaNonTrackingDetector* theNonTrackDetector =
+  while( auto* theNonTrackDetector =
 	 static_cast<THaNonTrackingDetector*>( next() )) {
+    assert(dynamic_cast<THaNonTrackingDetector*>(theNonTrackDetector));
 #ifdef WITH_DEBUG
     if( fDebug>1 ) cout << "Call CoarseProcess() for " 
 			<< theNonTrackDetector->GetName() << "... ";
@@ -332,12 +363,13 @@ Int_t THaSpectrometer::Track()
   // If coarse tracking was done, this step should simply "refine" the
   // tracks found earlier, not add new tracks to fTrack.
 
-  if( !IsDone(kCoarseRecon))
+  if( !IsDone(kCoarseRecon) )
     CoarseReconstruct();
 
   TIter next( fTrackingDetectors );
-  while( THaTrackingDetector* theTrackDetector =
+  while( auto* theTrackDetector =
 	 static_cast<THaTrackingDetector*>( next() )) {
+    assert(dynamic_cast<THaTrackingDetector*>(theTrackDetector));
 #ifdef WITH_DEBUG
     if( fDebug>1 ) cout << "Call FineTrack() for " 
 			<< theTrackDetector->GetName() << "... ";
@@ -381,7 +413,7 @@ Int_t THaSpectrometer::Reconstruct()
   //
 
   // Do prior analysis stages if not done yet
-  if( !IsDone(kTracking))
+  if( !IsDone(kTracking) )
     Track();
 
   // Fine processing.  Pass the precise tracks to the
@@ -389,8 +421,9 @@ Int_t THaSpectrometer::Reconstruct()
   // PID likelihoods should be calculated here.
 
   TIter next( fNonTrackingDetectors );
-  while( THaNonTrackingDetector* theNonTrackDetector =
+  while( auto* theNonTrackDetector =
 	 static_cast<THaNonTrackingDetector*>( next() )) {
+    assert(dynamic_cast<THaNonTrackingDetector*>(theNonTrackDetector));
 #ifdef WITH_DEBUG
     if( fDebug>1 ) cout << "Call FineProcess() for " 
 			<< theNonTrackDetector->GetName() << "... ";
@@ -408,7 +441,8 @@ Int_t THaSpectrometer::Reconstruct()
 
   // Compute combined PID
 
-  if( fPID ) CalcPID();
+  if( IsPID() )
+    CalcPID();
 
   fStagesDone |= kReconstruct;
   return 0;
@@ -501,9 +535,10 @@ void THaSpectrometer::SetCentralAngles( Double_t th, Double_t ph,
   GeoToSph( fThetaGeo, fPhiGeo, fThetaSph, fPhiSph );
   fSinThGeo = TMath::Sin( fThetaGeo ); fCosThGeo = TMath::Cos( fThetaGeo );
   fSinPhGeo = TMath::Sin( fPhiGeo );   fCosPhGeo = TMath::Cos( fPhiGeo );
-  Double_t st, ct, sp, cp;
-  st = fSinThSph = TMath::Sin( fThetaSph ); ct = fCosThSph = TMath::Cos( fThetaSph );
-  sp = fSinPhSph = TMath::Sin( fPhiSph );   cp = fCosPhSph = TMath::Cos( fPhiSph );
+  Double_t st = fSinThSph = TMath::Sin(fThetaSph);
+  Double_t ct = fCosThSph = TMath::Cos(fThetaSph);
+  Double_t sp = fSinPhSph = TMath::Sin(fPhiSph);
+  Double_t cp = fCosPhSph = TMath::Cos(fPhiSph);
 
   // Compute the rotation from TRANSPORT to lab and vice versa.
   Double_t norm = TMath::Sqrt(ct*ct + st*st*cp*cp);
@@ -511,15 +546,7 @@ void THaSpectrometer::SetCentralAngles( Double_t th, Double_t ph,
   TVector3 ny( ct/norm,          0.0,   -st*cp/norm   );
   TVector3 nz( st*cp,            st*sp, ct            );
   if( bend_down ) { nx *= -1.0; ny *= -1.0; }
-#if ROOT_VERSION_CODE >= ROOT_VERSION(3,5,4)
   fToLabRot.SetToIdentity().RotateAxes( nx, ny, nz );
-#else
-  if( !fToLabRot.IsIdentity()) {
-    TRotation tmp; //Identity
-    fToLabRot = tmp;
-  }
-  fToLabRot.RotateAxes( nx, ny, nz );
-#endif
   fToTraRot = fToLabRot.Inverse();
 }
 
@@ -540,13 +567,13 @@ Int_t THaSpectrometer::ReadRunDatabase( const TDatime& date )
 
   const DBRequest req[] = {
     { "theta",    &th                       },
-    { "phi",      &ph,        kDouble, 0, 1 },
+    { "phi",      &ph,        kDouble, 0, true },
     { "pcentral", &fPcentral                },
-    { "colldist", &fCollDist, kDouble, 0, 1 },
-    { "off_x",    &off_x,     kDouble, 0, 1 },
-    { "off_y",    &off_y,     kDouble, 0, 1 },
-    { "off_z",    &off_z,     kDouble, 0, 1 },
-    { 0 }
+    { "colldist", &fCollDist, kDouble, 0, true },
+    { "off_x",    &off_x,     kDouble, 0, true },
+    { "off_y",    &off_y,     kDouble, 0, true },
+    { "off_z",    &off_z,     kDouble, 0, true },
+    { nullptr }
   };
   err = LoadDB( file, date, req );
   fclose(file);

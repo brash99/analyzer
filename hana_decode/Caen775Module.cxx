@@ -5,7 +5,7 @@
 //   author Vincent Sulkosky
 //   
 //   Decoder module to retrieve Caen 775 TDCs.  Based on CAEN 792 decoding in
-//   SkeletonModule.C in podd 1.6.   (Written by S. Wood, modified by V. Sulkosky)
+//   SkeletonModule.C in Podd 1.6.   (Written by S. Wood, modified by V. Sulkosky)
 //
 /////////////////////////////////////////////////////////////////////
 
@@ -25,47 +25,44 @@ namespace Decoder {
 Module::TypeIter_t Caen775Module::fgThisType =
   DoRegister( ModuleType( "Decoder::Caen775Module" , 775 ));
 
-Caen775Module::Caen775Module(Int_t crate, Int_t slot) : VmeModule(crate, slot) {
-  fDebugFile=0;
-  Init();
-}
-
-Caen775Module::~Caen775Module() {
-  if(fNumHits) delete [] fNumHits;
+Caen775Module::Caen775Module( UInt_t crate, UInt_t slot ) :
+  VmeModule(crate, slot)
+{
+  fDebugFile=nullptr;
+  Caen775Module::Init();
 }
 
 void Caen775Module::Init() {
-  Module::Init();
+  VmeModule::Init();
+#ifdef DEBUG
   cout << endl << "Initializing v" << MyModName() << "!" << endl << endl;
+#endif
   fNumChan=NTDCCHAN;
-  for (Int_t i=0; i<fNumChan; i++) fData.push_back(0);
+  fData.resize(fNumChan);
 #if defined DEBUG && defined WITH_DEBUG
   // This will make a HUGE output
   delete fDebugFile; fDebugFile = 0;
   fDebugFile = new ofstream;
-#if __cplusplus >= 201103L
   fDebugFile->open(string("v")+MyModName()+"debug.txt");
-#else
-  fDebugFile->open((string("v")+MyModName()+"debug.txt").c_str());
 #endif
-#endif
-  //fDebugFile=0;
   Clear();
-  IsInit = kTRUE;
+  IsInit = true;
   TString modtypeup(MyModType());
   modtypeup.ToUpper();
   fName = Form("Caen %s %s Module",modtypeup.Data(),MyModName());
 }
 
-Int_t Caen775Module::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, const UInt_t *pstop) {
+UInt_t Caen775Module::LoadSlot( THaSlotData* sldat, const UInt_t* evbuffer,
+                                const UInt_t* pstop )
+{
 // This is a simple, default method for loading a slot
   const UInt_t *p = evbuffer;
   fWordsSeen = 0;
 //  cout << "version like V792"<<endl;
   ++p;
-  Int_t nword=*p-2;
+  UInt_t nword = *p-2;
   ++p;
-  for (Int_t i=0;i<nword;i++) {
+  for (UInt_t i=0;i<nword;i++) {
        ++p;
        if (p>pstop)
 	 break;
@@ -80,36 +77,39 @@ Int_t Caen775Module::LoadSlot(THaSlotData *sldat, const UInt_t* evbuffer, const 
   return fWordsSeen;
 }
 
-Int_t Caen775Module::LoadSlot(THaSlotData *sldat, const UInt_t *evbuffer, Int_t pos, Int_t len) {
-  
+UInt_t Caen775Module::LoadSlot( THaSlotData* sldat, const UInt_t* evbuffer,
+                                UInt_t pos, UInt_t len )
+{
   // Fill data structures of this class
   // Read until out of data or until decode says that the slot is finished
   // len = ndata in event, pos = word number for block header in event
   Clear();
-  Int_t index = 0;
-  Int_t counter = 0;
-  Int_t nword = 0;
-
+  UInt_t counter = 0;
+  Bool_t found_slot = kFALSE;
+  UInt_t nword = 0;
+  UInt_t slot_counter = 0;
   const UInt_t *p = evbuffer;
   fWordsSeen = 0; 
 
 #ifdef WITH_DEBUG
   //cout << "Number of words from 775: \t" << len << endl << endl;
 #endif
-  
   while (fWordsSeen < len) {   
-    index = pos + fWordsSeen;
+    UInt_t index = pos + fWordsSeen;
     // first word is the header
-    if (fWordsSeen == 0) {
-      nword=((p[index])&0x00003f00)>>8; // number of converted channels bits 8-13
+    if( !found_slot ) {
+      nword = (p[index] & 0x00003f00) >> 8; // number of converted channels bits 8-13
+      auto slot_num = (p[index] & 0xf8000000) >> 27;
       fWordsSeen++;
-    } else if (fWordsSeen <= nword) { // excludes the End of Block (EOB) word
-      UInt_t chan=((p[index])&0x00ff0000)>>16; // number of channel which data are coming from bits 16-20
-      UInt_t raw=((p[index])&0x00000fff);      // raw datum bits 0-11
+      if (slot_num == fSlot) found_slot = kTRUE;
+     } else if (slot_counter < nword) { // excludes the End of Block (EOB) word
+      UInt_t chan = (p[index] & 0x00ff0000) >> 16; // number of channel which data are coming from bits 16-20
+      UInt_t raw  =  p[index] & 0x00000fff;        // raw datum bits 0-11
       Int_t status = sldat->loadData(MyModType(),chan,raw,raw);
       fWordsSeen++;
       counter++;
-      if (chan < fData.size()) fData[chan]=raw;
+      slot_counter++;
+      if( chan < fData.size() ) fData[chan] = raw;
 #ifdef WITH_DEBUG
       //cout << "word\t"<<index<<"\t"<<chan<<"\t"<<raw<<endl;
 #endif
@@ -117,8 +117,7 @@ Int_t Caen775Module::LoadSlot(THaSlotData *sldat, const UInt_t *evbuffer, Int_t 
     } else fWordsSeen++; // increment the counter for the EOB word
 
 #ifdef WITH_DEBUG
-    //cout << "word   "<<i<<"   "<<chan<<"   "<<raw<<endl;
-    if (fDebugFile != 0)
+    if( fDebugFile )
       *fDebugFile << "\n" << "Caen775Module::LoadSlot >> evbuffer[" << index 
 		  << "] = " << hex << evbuffer[index] << dec << " >> crate = "
 		  << fCrate << " >> slot = " << fSlot << " >> pos = " 
@@ -126,21 +125,22 @@ Int_t Caen775Module::LoadSlot(THaSlotData *sldat, const UInt_t *evbuffer, Int_t 
 		  << " >> len = " << len << " >> index = " << index << "\n" << endl;
 #endif
   }
-  if (counter != nword) cout << Form("Warning in v%s Number of converted channels, %d, is not equal to number of decoded words, %d!",MyModName(),
-				     nword,counter) << endl << endl;
+  if( counter != nword )
+    cout << Form("Warning in v%s Number of converted channels, %u, is not "
+                 "equal to number of decoded words, %u!",
+                 MyModName(), nword, counter) << endl << endl;
   return fWordsSeen;
 }
 
   /* Does anything use this method */
-UInt_t Caen775Module::GetData(Int_t chan) const {
-  if (chan < 0 || chan > fNumChan) return 0;
+UInt_t Caen775Module::GetData( UInt_t chan ) const {
+  if (chan > fNumChan) return 0;
   return fData[chan];
 }
 
 void Caen775Module::Clear(Option_t* opt) {
   VmeModule::Clear(opt);
-  fNumHits = 0;
-  for (Int_t i=0; i<fNumChan; i++) fData[i]=0;
+  fData.assign(fNumChan,0);
 }
 
 }

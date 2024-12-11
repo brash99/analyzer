@@ -4,12 +4,9 @@
 #include <iostream>
 #include <fstream>
 #include <cstdlib>
-#include <cstdio>
+#include <cmath>
 #include <numeric>
-#include <vector>
-#include <time.h>
 #include "TH1.h"
-#include "TH2.h"
 #include "TFile.h"
 #include "TF1.h"
 
@@ -25,7 +22,7 @@ using namespace std;
 TFile *rif, *rof;
 TH1I *h_pped[NUMSLOTS][NADCCHAN];
 TF1 *init_gfit[NUMSLOTS][NADCCHAN], *gfit[NUMSLOTS][NADCCHAN];
-UInt_t nentries[NUMSLOTS][NADCCHAN], threshhold[NUMSLOTS][NADCCHAN];
+UInt_t nentries[NUMSLOTS][NADCCHAN], threshold[NUMSLOTS][NADCCHAN];
 Double_t init_max[NUMSLOTS][NADCCHAN], init_mean[NUMSLOTS][NADCCHAN], init_stddev[NUMSLOTS][NADCCHAN];
 Double_t iter_max[NUMSLOTS][NADCCHAN], iter_mean[NUMSLOTS][NADCCHAN], iter_stddev[NUMSLOTS][NADCCHAN];
 Double_t finl_max[NUMSLOTS][NADCCHAN], finl_mean[NUMSLOTS][NADCCHAN], finl_stddev[NUMSLOTS][NADCCHAN];
@@ -75,33 +72,34 @@ void calc_thresh() {
   for (UInt_t islot = SLOTMIN; islot < NUMSLOTS; islot++) {
     if (islot == 11 || islot == 12) continue;
 
-    slot_dir[islot] = dynamic_cast <TDirectory*> (mode_dir->Get(Form("slot_%d", islot)));
+    slot_dir[islot] = dynamic_cast <TDirectory*> (mode_dir->Get(Form("slot_%u", islot)));
     if(!slot_dir[islot]) {
-      slot_dir[islot] = rof->mkdir(Form("mode_%d_data/slot_%d", fadc_mode, islot)); 
-      rof->cd(Form("/mode_%d_data/slot_%d", fadc_mode, islot));
+      slot_dir[islot] = rof->mkdir(Form("mode_%d_data/slot_%u", fadc_mode, islot));
+      rof->cd(Form("/mode_%d_data/slot_%u", fadc_mode, islot));
     }
-    else rof->cd(Form("/mode_%d_data/slot_%d", fadc_mode, islot));
+    else rof->cd(Form("/mode_%d_data/slot_%u", fadc_mode, islot));
 
     for (UInt_t ichan = 0; ichan < NADCCHAN; ichan++) {
 
       // Write pedestal histos and fits to rof
-      chan_dir[ichan] = dynamic_cast <TDirectory*> (slot_dir[islot]->Get(Form("chan_%d", ichan)));
-      if(!chan_dir[ichan]) {
-	chan_dir[ichan] = rof->mkdir(Form("mode_%d_data/slot_%d/chan_%d", fadc_mode, islot, ichan)); 
-	rof->cd(Form("/mode_%d_data/slot_%d/chan_%d", fadc_mode, islot, ichan));
+      chan_dir[ichan] = dynamic_cast <TDirectory*> (slot_dir[islot]->Get(Form("chan_%u", ichan)));
+      if( !chan_dir[ichan] ) {
+        chan_dir[ichan] = rof->mkdir(Form("mode_%d_data/slot_%u/chan_%u", fadc_mode, islot, ichan));
       }
-      else rof->cd(Form("/mode_%d_data/slot_%d/chan_%d", fadc_mode, islot, ichan));
+      rof->cd(Form("/mode_%d_data/slot_%u/chan_%u", fadc_mode, islot, ichan));
 
-      if (!h_pped[islot][ichan]) h_pped[islot][ichan] = (TH1I*) (rif->Get(Form("mode_%d_data/slot_%d/chan_%d/h_pped", fadc_mode, islot, ichan)));
+      if( !h_pped[islot][ichan] )
+        h_pped[islot][ichan] = (TH1I*)(rif->Get(Form("mode_%d_data/slot_%u/chan_%u/h_pped", fadc_mode, islot, ichan)));
       // Acquire the number of entries as a restriction for a good fit
-      if (h_pped[islot][ichan]) nentries[islot][ichan] = h_pped[islot][ichan]->GetEntries();
+      if( h_pped[islot][ichan] )
+        nentries[islot][ichan] = h_pped[islot][ichan]->GetEntries();
       // cout << "CHANNEL NO PED = " << ichan << ", HISTO PTR = "
       //      << h_pped[islot][ichan] << ", NENTRIES = " << nentries[islot][ichan] << endl;
-      if (h_pped[islot][ichan] && (nentries[islot][ichan] >= NPOINTS)) {
+      if( h_pped[islot][ichan] && (nentries[islot][ichan] >= NPOINTS) ) {
 
 	//cout << "Found Pedestal Histo for Slot " << islot << ", Channel " << ichan << endl;
 	// Define the fit
-	init_gfit[islot][ichan] = new TF1(Form("init_fit_slot_%d_chan_%d", islot, ichan), "gaus(0)");
+	init_gfit[islot][ichan] = new TF1(Form("init_fit_slot_%u_chan_%u", islot, ichan), "gaus(0)");
 	init_gfit[islot][ichan]->SetLineColor(2);
 
 	// Obtain intial fit parameters
@@ -129,11 +127,11 @@ void calc_thresh() {
 	init_fr_low[islot][ichan]  = init_mean[islot][ichan] - NSIGMAFIT*init_stddev[islot][ichan];
 	init_fr_high[islot][ichan] = init_mean[islot][ichan] + NSIGMAFIT*init_stddev[islot][ichan];
 	init_gfit[islot][ichan]->SetRange(init_fr_low[islot][ichan], init_fr_high[islot][ichan]); 
-	h_pped[islot][ichan]->Fit(Form("init_fit_slot_%d_chan_%d", islot, ichan), "QR");
-	//h_pped[islot][ichan]->Fit(Form("init_fit_slot_%d_chan_%d", islot, ichan));
+	h_pped[islot][ichan]->Fit(Form("init_fit_slot_%u_chan_%u", islot, ichan), "QR");
+	//h_pped[islot][ichan]->Fit(Form("init_fit_slot_%u_chan_%u", islot, ichan));
 	init_gfit[islot][ichan]->Draw();
 	// Declare and initialize the second and final fit
-	gfit[islot][ichan] = new TF1(Form("iter_fit_slot_%d_chan_%d", islot, ichan), "gaus(0)");
+	gfit[islot][ichan] = new TF1(Form("iter_fit_slot_%u_chan_%u", islot, ichan), "gaus(0)");
 	gfit[islot][ichan]->SetLineColor(4);
 	// Acquire the fit parameters from the first fit and initialize the second fit
 	iter_max[islot][ichan]    = init_gfit[islot][ichan]->GetParameter(0);
@@ -151,23 +149,25 @@ void calc_thresh() {
 	//      << ", FR HIGH = " << fr_high[islot][ichan] << endl;
 	gfit[islot][ichan]->SetRange(fr_low[islot][ichan], fr_high[islot][ichan]); 
 	// Perform the fit and store the parameters
-	h_pped[islot][ichan]->Fit(Form("iter_fit_slot_%d_chan_%d", islot, ichan), "QR");
-	//h_pped[islot][ichan]->Fit(Form("iter_fit_slot_%d_chan_%d", islot, ichan), "R");
+	h_pped[islot][ichan]->Fit(Form("iter_fit_slot_%u_chan_%u", islot, ichan), "QR");
+	//h_pped[islot][ichan]->Fit(Form("iter_fit_slot_%u_chan_%u", islot, ichan), "R");
 	gfit[islot][ichan]->Draw("same");
-	// Acquire the final fit paramters
+	// Acquire the final fit parameters
 	finl_max[islot][ichan]    = gfit[islot][ichan]->GetParameter(0);
 	finl_mean[islot][ichan]   = gfit[islot][ichan]->GetParameter(1);
 	finl_stddev[islot][ichan] = gfit[islot][ichan]->GetParameter(2);
 
-	if ((NSIGMATHRESH * (UInt_t (finl_stddev[islot][ichan] + 0.5))) < nchan)
-	  threshhold[islot][ichan] = UInt_t (finl_mean[islot][ichan] + 0.5) + nchan;
-	else
-	  threshhold[islot][ichan] = UInt_t (finl_mean[islot][ichan] + 0.5) + NSIGMATHRESH * (UInt_t (finl_stddev[islot][ichan] + 0.5));
-	//threshhold[islot][ichan]  = UInt_t (finl_mean[islot][ichan] + 0.5) + nchan; // Handle rounding correctly
-	//threshhold[islot][ichan]  = UInt_t (finl_mean[islot][ichan] + 0.5) + NSIGMATHRESH * (UInt_t (finl_stddev[islot][ichan] + 0.5)); // Handle rounding correctly
+        long istddev = lround(finl_stddev[islot][ichan]);
+        long imean   = lround(finl_mean[islot][ichan]);
+        if( istddev < 0 ) istddev = 0;
+        if( imean < 0 ) imean = 0;
+        if( NSIGMATHRESH * istddev < nchan )
+          threshold[islot][ichan] = imean + nchan;
+        else
+          threshold[islot][ichan] = imean + NSIGMATHRESH * istddev;
 	// cout << "Slot = " << islot << ", Channel = " << ichan
 	//      << ", Mean = " << finl_mean[islot][ichan]
-	//      << ", Threshold = " << threshhold[islot][ichan] << endl;
+	//      << ", Threshold = " << threshold[islot][ichan] << endl;
 	// Acquire the final fit parameter errors
 	finl_max_err[islot][ichan]    = gfit[islot][ichan]->GetParError(0);
 	finl_mean_err[islot][ichan]   = gfit[islot][ichan]->GetParError(1);
@@ -186,10 +186,10 @@ void calc_thresh() {
     if (islot == 11 || islot == 12) continue;
     outputfile << "slot=" << islot << endl;
     for (UInt_t ichan = 0; ichan < NADCCHAN; ichan++)
-      if (threshhold[islot][ichan] == 0)
+      if ( threshold[islot][ichan] == 0)
 	outputfile << 4095 << endl;
       else 
-	outputfile << threshhold[islot][ichan] << endl;
+	outputfile << threshold[islot][ichan] << endl;
   }  // Slot loop
   
 }

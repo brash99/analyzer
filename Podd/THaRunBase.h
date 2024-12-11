@@ -10,18 +10,21 @@
 #include "TNamed.h"
 #include "TDatime.h"
 #include <cstdio>        // for EOF
+#include <memory>
+#include <string>
 
 class THaRunParameters;
 class THaEvData;
 
 class THaRunBase : public TNamed {
-  
+
 public:
-  THaRunBase( const char* description="" );
+  explicit THaRunBase( const char* description="" );
   THaRunBase( const THaRunBase& run );
-  virtual THaRunBase& operator=( const THaRunBase& rhs );
+  virtual THaRunBase& operator=( const THaRunBase& rhs ); //TODO make non-virtual?
   virtual ~THaRunBase();
-  
+  //TODO Implement Clone() and use in THaAnalyzer
+
   virtual bool operator==( const THaRunBase& ) const;
   virtual bool operator!=( const THaRunBase& ) const;
   virtual bool operator< ( const THaRunBase& ) const;
@@ -30,7 +33,7 @@ public:
   virtual bool operator>=( const THaRunBase& ) const;
 
   // Return codes for Init/Open/ReadEvent/Close
-  enum { READ_OK = 0, READ_EOF = EOF, READ_ERROR = 32, READ_FATAL = 64 };
+  enum { READ_OK = 0, READ_EOF = EOF, READ_ERROR = -32, READ_FATAL = -64 };
 
   // Main functions
   virtual const UInt_t* GetEvBuffer() const = 0;
@@ -48,39 +51,47 @@ public:
           void         IncrNumAnalyzed( Int_t n=1 ) { fNumAnalyzed += n; }
   const   TDatime&     GetDate()        const { return fDate; }
           UInt_t       GetDataRequired() const { return fDataRequired; }
+  // GetDataVersion is intentionally not const; derived classes modify members
   virtual Int_t        GetDataVersion()       { return fDataVersion; }
           UInt_t       GetNumAnalyzed() const { return fNumAnalyzed; }
-          Int_t        GetNumber()      const { return fNumber; }
-          Int_t        GetType()        const { return fType; }
+          UInt_t       GetNumber()      const { return fNumber; }
+          UInt_t       GetType()        const { return fType; }
           UInt_t       GetFirstEvent()  const { return fEvtRange[0]; }
           UInt_t       GetLastEvent()   const { return fEvtRange[1]; }
-  THaRunParameters*    GetParameters()  const { return fParam; }
+  THaRunParameters*    GetParameters()  const { return fParam.get(); }
   virtual Bool_t       HasInfo( UInt_t bits ) const;
   virtual Bool_t       HasInfoRead( UInt_t bits ) const;
           Bool_t       IsInit()         const { return fIsInit; }
   virtual Bool_t       IsOpen()         const;
   virtual void         Print( Option_t* opt="" ) const;
   virtual void         SetDate( const TDatime& date );
-          void         SetDate( UInt_t tloc );
+          void         SetDate( UInt_t tloc );  //FIXME take 64-bit time
 	  void         SetDataRequired( UInt_t mask ); // mask is OR of EInfoType
   virtual Int_t        SetDataVersion( Int_t version );
           void         SetFirstEvent( UInt_t n );
           void         SetLastEvent(  UInt_t n );
           void         SetEventRange( UInt_t first, UInt_t last );
-  virtual void         SetNumber( Int_t number );
+  virtual void         SetNumber( UInt_t number );
           void         SetRunParamClass( const char* classname );
-  virtual void         SetType( Int_t type );
+  virtual void         SetType( UInt_t type );
   virtual Int_t        Update( const THaEvData* evdata );
 
-  enum EInfoType { kDate      = BIT(0), 
+  enum EInfoType { kDate      = BIT(0),
 		   kRunNumber = BIT(1),
 		   kRunType   = BIT(2),
-		   kPrescales = BIT(3) };
+		   kPrescales = BIT(3),
+                   kDAQInfo   = BIT(4) };
+
+  // DAQ configuration strings (usually database file dumps) from user event
+  size_t               GetNConfig() const;
+  const std::string&   GetDAQConfig( size_t i ) const;
+  const std::string&   GetDAQInfo( const std::string& key ) const;
 
 protected:
-  Int_t         fNumber;        // Run number
-  Int_t         fType;          // Run type/mode/etc.
+  UInt_t        fNumber;        // Run number
+  UInt_t        fType;          // Run type/mode/etc.
   TDatime       fDate;          // Run date and time
+  //FIXME event counts may overflow, make ULong64_t
   UInt_t        fEvtRange[2];   // Event range to analyze
   UInt_t        fNumAnalyzed;   // Number of physics events actually analyzed
   Bool_t        fDBRead;        // True if database successfully read.
@@ -90,15 +101,15 @@ protected:
   UInt_t        fDataSet;       // Flags for info that is valid (see EInfoType)
   UInt_t        fDataRead;      // Flags for info found in data (see EInfoType)
   UInt_t        fDataRequired;  // Info required for Init() to succeed
-  THaRunParameters* fParam;     // Run parameters
+  std::unique_ptr<THaRunParameters> fParam; // Run parameters
   TString       fRunParamClass; // Class of object in fParam
   Int_t         fDataVersion;   // Data format version (implementation-dependent)
   TObject*      fExtra;         // Additional member data (for binary compat.)
 
   virtual Int_t ReadDatabase();
-  virtual Int_t ReadInitInfo();
+  virtual Int_t ReadInitInfo( Int_t level = 0 );
 
-  ClassDef(THaRunBase,4)       // Base class for run objects
+  ClassDef(THaRunBase,6)       // Base class for run objects
 };
 
 

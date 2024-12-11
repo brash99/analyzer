@@ -11,7 +11,7 @@
 #include "TDatime.h"
 #include "TError.h"
 #include "TMath.h"
-#include "THaEvData.h"
+#include "CodaDecoder.h"
 #include <iostream>
 
 using namespace std;
@@ -19,57 +19,13 @@ using namespace std;
 //_____________________________________________________________________________
 THaRunParameters::THaRunParameters() :
   fBeamE(0), fBeamP(0), fBeamM(0), fBeamQ(0), fBeamdE(0), fBeamPol(0),
-  fTgtM(0), fTgtPol(0), fIsPol(kFALSE)
+  fTgtM(0), fTgtPol(0), fIsPol(false)
 {
   // Default constructor
 
-  fPrescale.Set(THaEvData::MAX_PSFACT);
+  fPrescale.Set(Decoder::CodaDecoder::MAX_PSFACT);
   for( int i=0; i<fPrescale.GetSize(); i++)
     fPrescale[i] = -1;
-}
-
-//_____________________________________________________________________________
-THaRunParameters::THaRunParameters( const THaRunParameters& rhs ) :
-  TObject(rhs),
-  fBeamName(rhs.fBeamName), fBeamE(rhs.fBeamE), fBeamP(rhs.fBeamP),
-  fBeamM(rhs.fBeamM), fBeamQ(rhs.fBeamQ), fBeamdE(rhs.fBeamdE), 
-  fBeamPol(rhs.fBeamPol),
-  fTgtName(rhs.fTgtName), fTgtM(rhs.fTgtM), fTgtPol(rhs.fTgtPol),
-  fIsPol(rhs.fIsPol),
-  fRunName(rhs.fRunName), fPrescale(rhs.fPrescale)
-{
-  // Copy ctor. Explicitly implemented to work around limitations of CINT
-  // with derived classes.
-
-}
-
-//_____________________________________________________________________________
-THaRunParameters& THaRunParameters::operator=(const THaRunParameters& rhs)
-{
-  // THaRunParameters assignment operator.
-
-  if (this != &rhs) {
-    fBeamName = rhs.fBeamName;
-    fBeamE    = rhs.fBeamE; 
-    fBeamP    = rhs.fBeamP;
-    fBeamM    = rhs.fBeamM;
-    fBeamQ    = rhs.fBeamQ; 
-    fBeamdE   = rhs.fBeamdE; 
-    fBeamPol  = rhs.fBeamPol;
-    fTgtName  = rhs.fTgtName; 
-    fTgtM     = rhs.fTgtM;
-    fTgtPol   = rhs.fTgtPol;
-    fIsPol    = rhs.fIsPol;
-    fRunName  = rhs.fRunName;
-    fPrescale = rhs.fPrescale;
-  }
-  return *this;
-}
-
-//_____________________________________________________________________________
-THaRunParameters::~THaRunParameters()
-{
-  // Destructor
 }
 
 //_____________________________________________________________________________
@@ -79,7 +35,7 @@ void THaRunParameters::Clear( Option_t* )
   fBeamName = fTgtName = fRunName = "";
   fBeamE = fBeamP = fBeamM = fBeamdE = fBeamPol = fTgtM = fTgtPol = 0;
   fBeamQ = 0;
-  fIsPol = kFALSE;
+  fIsPol = false;
   fPrescale.Reset();
 }
 
@@ -106,12 +62,7 @@ void THaRunParameters::Print( Option_t* ) const
   if( np > 0 ){
     cout << "  Prescale factors: (1-"<<np<<")\n   ";
     for( int i=0; i<np; i++ ) {
-#if ROOT_VERSION_CODE >= ROOT_VERSION(3,3,0)
       cout << fPrescale[i];
-#else
-      // const version of operator[] missing in ROOT < 3.3
-      cout << const_cast<THaRunParameters*>(this)->fPrescale[i];
-#endif
       if( i != np-1 )
 	cout << "/";
     }
@@ -127,29 +78,28 @@ Int_t THaRunParameters::ReadDatabase( const TDatime& date )
   //
   // Return 0 if success, <0 if file error, >0 if not all required data found.
 
-#define OPEN THaAnalysisObject::OpenFile
+#define OPEN Podd::OpenDBFile
 #define LOAD THaAnalysisObject::LoadDB
 
-  FILE* f = OPEN( "run", date, "THaRunParameters::ReadDatabase", "r", 1 );
+  FILE* f = OPEN("run", date, "THaRunParameters::ReadDatabase", "r", 1);
   if( !f ) 
     return -1;
 
-  Double_t E, M = 0.511e-3, Q = -1.0, dE = 0.0;
+  Double_t E = kBig, M = 0.511e-3, Q = -1.0, dE = 0.0;
 
   DBRequest request[] = {
     { "ebeam",  &E },
-    { "mbeam",  &M,  kDouble, 0, 1 },
-    { "qbeam",  &Q,  kDouble, 0, 1 },
-    { "dEbeam", &dE, kDouble, 0, 1 },
-    { 0 }
+    { "mbeam",  &M,  kDouble, 0, true },
+    { "qbeam",  &Q,  kDouble, 0, true },
+    { "dEbeam", &dE, kDouble, 0, true },
+    { nullptr }
   };
   Int_t err = LOAD( f, date, request, "" );
   fclose(f);
   if( err )
     return err;
 
-  Int_t iq = int(Q);
-  SetBeam( E, M, iq, dE );
+  SetBeam( E, M, int(Q), dE );
 
   return 0;
 }

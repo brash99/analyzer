@@ -11,50 +11,73 @@
 #include "THaRunBase.h"
 #include "THaRunParameters.h"
 #include "THaEvData.h"
+#include "DAQconfig.h"
+#include "THaPrintOption.h"
 #include "TClass.h"
 #include "TError.h"
 #include <iostream>
-#if ROOT_VERSION_CODE < ROOT_VERSION(3,1,6)
-#include <ctime>
-#endif
+#include <algorithm>  // std::copy, std::equal
+#include <iterator>   // std::begin, std::end
 
 using namespace std;
 
 static const int UNDEFDATE = 19950101;
 static const char* NOTINIT = "uninitialized run";
 static const char* DEFRUNPARAM = "THaRunParameters";
+static constexpr UInt_t DEFEVTRANGE[2]{1, kMaxUInt};
 
 //_____________________________________________________________________________
-THaRunBase::THaRunBase( const char* description ) :
-  TNamed(NOTINIT, description ),
-  fNumber(-1), fType(0), fDate(UNDEFDATE,0), fNumAnalyzed(0),
-  fDBRead(kFALSE), fIsInit(kFALSE), fOpened(kFALSE), fAssumeDate(kFALSE),
-  fDataSet(0), fDataRead(0), fDataRequired(kDate), fParam(0),
-  fRunParamClass(DEFRUNPARAM), fDataVersion(0), fExtra(0)
+THaRunBase::THaRunBase( const char* description )
+  : TNamed(NOTINIT, description )
+  , fNumber(0)
+  , fType(0)
+  , fDate(UNDEFDATE,0)
+  , fEvtRange{DEFEVTRANGE[0], DEFEVTRANGE[1]}
+  , fNumAnalyzed(0)
+  , fDBRead(false)
+  , fIsInit(false)
+  , fOpened(false)
+  , fAssumeDate(false)
+  , fDataSet(0)
+  , fDataRead(0)
+  , fDataRequired(kDate)
+  , fParam(nullptr)
+  , fRunParamClass(DEFRUNPARAM)
+  , fDataVersion(0)
+  , fExtra(nullptr)
 {
   // Normal & default constructor
 
   ClearEventRange();
+  //FIXME: BCI: should be in RunParameters
+  DAQInfoExtra::AddTo(fExtra);
 }
 
 //_____________________________________________________________________________
-THaRunBase::THaRunBase( const THaRunBase& rhs ) :
-  TNamed( rhs ), fNumber(rhs.fNumber), fType(rhs.fType),
-  fDate(rhs.fDate), fNumAnalyzed(rhs.fNumAnalyzed), fDBRead(rhs.fDBRead),
-  fIsInit(rhs.fIsInit), fOpened(kFALSE), fAssumeDate(rhs.fAssumeDate),
-  fDataSet(rhs.fDataSet), fDataRead(rhs.fDataRead),
-  fDataRequired(rhs.fDataRequired), fParam(0),
-  fRunParamClass(rhs.fRunParamClass), fDataVersion(rhs.fDataVersion),
-  fExtra(0)
+THaRunBase::THaRunBase( const THaRunBase& rhs )
+  : TNamed(rhs)
+  , fNumber(rhs.fNumber)
+  , fType(rhs.fType)
+  , fDate(rhs.fDate)
+  , fEvtRange{rhs.fEvtRange[0], rhs.fEvtRange[1]}
+  , fNumAnalyzed(rhs.fNumAnalyzed)
+  , fDBRead(rhs.fDBRead)
+  , fIsInit(rhs.fIsInit)
+  , fOpened(false)
+  , fAssumeDate(rhs.fAssumeDate)
+  , fDataSet(rhs.fDataSet)
+  , fDataRead(rhs.fDataRead)
+  , fDataRequired(rhs.fDataRequired)
+  , fParam(nullptr)
+  , fRunParamClass(rhs.fRunParamClass)
+  , fDataVersion(rhs.fDataVersion)
+  , fExtra(nullptr)
 {
   // Copy ctor
 
-  fEvtRange[0] = rhs.fEvtRange[0];
-  fEvtRange[1] = rhs.fEvtRange[1];
   // NB: the run parameter object might inherit from THaRunParameters
   if( rhs.fParam ) {
-    fParam = static_cast<THaRunParameters*>(rhs.fParam->IsA()->New());
-    *fParam = *rhs.fParam;
+    fParam.reset(dynamic_cast<THaRunParameters*>(rhs.fParam->Clone()));
   }
   if( rhs.fExtra )
     fExtra = rhs.fExtra->Clone();
@@ -71,29 +94,26 @@ THaRunBase& THaRunBase::operator=(const THaRunBase& rhs)
      fNumber     = rhs.fNumber;
      fType       = rhs.fType;
      fDate       = rhs.fDate;
-     fEvtRange[0] = rhs.fEvtRange[0];
-     fEvtRange[1] = rhs.fEvtRange[1];
+     copy(begin(rhs.fEvtRange), end(rhs.fEvtRange), begin(fEvtRange));
      fNumAnalyzed = rhs.fNumAnalyzed;
      fDBRead     = rhs.fDBRead;
      fIsInit     = rhs.fIsInit;
-     fOpened     = kFALSE;
+     fOpened     = false;
      fAssumeDate = rhs.fAssumeDate;
      fDataSet    = rhs.fDataSet;
      fDataRead   = rhs.fDataRead;
      fDataRequired = rhs.fDataRequired;
-     delete fParam;
      if( rhs.fParam ) {
-       fParam = static_cast<THaRunParameters*>(rhs.fParam->IsA()->New());
-       *fParam = *rhs.fParam;
+       fParam.reset(dynamic_cast<THaRunParameters*>(rhs.fParam->Clone()));
      } else
-       fParam    = 0;
+       fParam    = nullptr;
      fRunParamClass = rhs.fRunParamClass;
      fDataVersion   = rhs.fDataVersion;
      delete fExtra;
      if( rhs.fExtra )
        fExtra = rhs.fExtra->Clone();
      else
-       fExtra = 0;
+       fExtra = nullptr;
   }
   return *this;
 }
@@ -103,8 +123,7 @@ THaRunBase::~THaRunBase()
 {
   // Destructor
 
-  delete fExtra; fExtra = 0;
-  delete fParam; fParam = 0;
+  delete fExtra; fExtra = nullptr;
 }
 
 //_____________________________________________________________________________
@@ -113,35 +132,55 @@ Int_t THaRunBase::Update( const THaEvData* evdata )
   // Inspect decoded event data 'evdata' for run parameter data (e.g. prescale
   // factors) and, if any found, extract the parameters and store them here.
 
+  static const char* const here = "THaRunBase::Update";
+
   if( !evdata )
     return -1;
 
   Int_t ret = 0;
   // Run date & number
   if( evdata->IsPrestartEvent() ) {
+    fDataRead |= kDate|kRunNumber|kRunType;
     if( !fAssumeDate ) {
       fDate.Set( evdata->GetRunTime() );
       fDataSet |= kDate;
     }
     SetNumber( evdata->GetRunNum() );
     SetType( evdata->GetRunType() );
-    fDataRead |= kDate|kRunNumber|kRunType;
-    ret = 1;
+    fDataSet  |= kRunNumber|kRunType;
+    ret |= (1<<0);
   }
   // Prescale factors
   if( evdata->IsPrescaleEvent() ) {
+    fDataRead |= kPrescales;
     for(int i=0; i<fParam->GetPrescales().GetSize(); i++) {
       Int_t psfact = evdata->GetPrescaleFactor(i+1);
       if( psfact == -1 ) {
-	Error( "THaRunBase", "Failed to decode prescale factor for trigger %d. "
+	Error( here, "Failed to decode prescale factor for trigger %d. "
 	       "Check raw data file for format errors.", i );
 	return -2;
       }
       fParam->Prescales()[i] = psfact;
     }
     fDataSet  |= kPrescales;
-    fDataRead |= kPrescales;
-    ret = 2;
+    ret |= (1<<1);
+  }
+#define CFGEVT1 Decoder::DAQCONFIG_FILE1
+#define CFGEVT2 Decoder::DAQCONFIG_FILE2
+  if( evdata->GetEvType() == CFGEVT1 || evdata->GetEvType() == CFGEVT2 ) {
+    fDataRead |= kDAQInfo;
+    auto* srcifo = DAQInfoExtra::GetFrom(evdata->GetExtra());
+    if( !srcifo ) {
+      Warning( here, "Failed to decode DAQ config info from event type %u",
+               evdata->GetEvType() );
+      return -3;
+    }
+    auto* ifo = DAQInfoExtra::GetFrom(fExtra);
+    assert(ifo);     // else bug in constructor
+    // Copy info to local run parameters. NB: This may be several MB of data.
+    *ifo = *srcifo;
+    fDataSet |= kDAQInfo;
+    ret |= (1<<2);
   }
   return ret;
 }
@@ -188,15 +227,16 @@ void THaRunBase::Clear( Option_t* opt )
   // Reset the run object as if freshly constructed.
   // However, when opt=="INIT", keep an explicitly set event range and run date
 
-  TString sopt(opt);
-  bool doing_init = (sopt == "INIT");
+  THaPrintOption sopt(opt);
+  sopt.ToUpper();
+  bool doing_init = (sopt.Contains("INIT"));
 
   Close();
   fName = NOTINIT;
   fNumber = -1;
   fType = 0;
   fNumAnalyzed = 0;
-  fDBRead = fIsInit = fOpened = kFALSE;
+  fDBRead = fIsInit = fOpened = false;
   fDataSet = fDataRead = 0;
   fParam->Clear(opt);
 
@@ -206,9 +246,10 @@ void THaRunBase::Clear( Option_t* opt )
   else
     ClearDate();
 
-  // Likewise, if initializing, keep any explicitly set event range
+  // Likewise, if initializing, keep any explicitly set parameters
   if( !doing_init ) {
     ClearEventRange();
+    fDataVersion = 0;
   }
 }
 
@@ -218,7 +259,7 @@ void THaRunBase::ClearDate()
   // Reset the run date to "undefined"
 
   fDate.Set(UNDEFDATE,0);
-  fAssumeDate = fIsInit = kFALSE;
+  fAssumeDate = fIsInit = false;
   fDataSet &= ~kDate;
 }
 
@@ -227,8 +268,7 @@ void THaRunBase::ClearEventRange()
 {
   // Reset the range of events to analyze
 
-  fEvtRange[0] = 1;
-  fEvtRange[1] = kMaxUInt;
+  copy(begin(DEFEVTRANGE), end(DEFEVTRANGE), begin(fEvtRange));
 }
 
 //_____________________________________________________________________________
@@ -238,7 +278,7 @@ Int_t THaRunBase::Compare( const TObject* obj ) const
   // -1 when 'this' is smaller and +1 when bigger (like strcmp).
 
   if (this == obj) return 0;
-  const THaRunBase* rhs = dynamic_cast<const THaRunBase*>(obj);
+  const auto *rhs = dynamic_cast<const THaRunBase*>(obj);
   if( !rhs ) return -1;
   if      ( fNumber < rhs->fNumber ) return -1;
   else if ( fNumber > rhs->fNumber ) return  1;
@@ -270,51 +310,39 @@ Int_t THaRunBase::Init()
 
   static const char* const here = "THaRunBase::Init";
 
-  Int_t retval = READ_OK;
-
   // Set up the run parameter object
-  delete fParam; fParam = 0;
+  fParam = nullptr;
   const char* s = fRunParamClass.Data();
   TClass* cl = TClass::GetClass(s);
   if( !cl ) {
     Error( here, "Run parameter class \"%s\" not "
 	   "available. Load library or fix configuration.", s?s:"" );
-    retval = READ_FATAL;
-    goto err;
+    return READ_FATAL;
   }
   if( !cl->InheritsFrom( THaRunParameters::Class() )) {
     Error( here, "Class \"%s\" is not a run parameter class.", s );
-    retval = READ_FATAL;
-    goto err;
+    return READ_FATAL;
   }
 
-  fParam = static_cast<THaRunParameters*>( cl->New() );
+  fParam.reset(static_cast<THaRunParameters*>( cl->New() ));
 
   if( !fParam ) {
     Error( here, "Unexpected error creating run parameter object "
 	   "\"%s\". Call expert.", s );
-    retval = READ_FATAL;
-    goto err;
-  }
- err:
-  if( retval != READ_OK ) {
-    delete fParam; fParam = 0;
-    return retval;
+    return READ_FATAL;
   }
 
-  // Clear selected parameters (matters for re-init)
+  // Clear selected parameters (matters for re-init). This calls Close().
   Clear("INIT");
 
   // Open the data source.
-  if( !IsOpen() ) {
-    retval = Open();
-    if( retval )
-      return retval;
-  }
+  Int_t retval = Open();
+  if( retval )
+    return retval;
 
   // Get initial information - e.g., prescan the data source for
   // the required run date
-  retval = ReadInitInfo();
+  retval = ReadInitInfo(0);
 
   // Close the data source for now to avoid conflicts. It will be opened
   // again later.
@@ -324,20 +352,18 @@ Int_t THaRunBase::Init()
     return retval;
 
   if( !HasInfo(fDataRequired) ) {
-    const char* errmsg[] = { "run date", "run number", "run type",
-			     "prescale factors", 0 };
+    vector<TString> errmsg = { "run date", "run number", "run type",
+                               "prescale factors", "DAQ info" };
     TString errtxt("Missing run parameters: ");
     UInt_t i = 0, n = 0;
-    const char** msg = errmsg;
-    while( *msg ) {
-      if( !HasInfo(BIT(i)&fDataRequired) ) {
+    for( auto& msg : errmsg ) {
+      if( !HasInfo(BIT(i) & fDataRequired) ) {
 	if( n>0 )
 	  errtxt += ", ";
-	errtxt += *msg;
+	errtxt += msg;
 	n++;
       }
       i++;
-      msg++;
     }
     errtxt += ". Run not initialized.";
     Error( here, "%s", errtxt.Data() );
@@ -351,7 +377,7 @@ Int_t THaRunBase::Init()
   if( retval )
     return retval;
 
-  fIsInit = kTRUE;
+  fIsInit = true;
   return READ_OK;
 }
 
@@ -365,21 +391,37 @@ Bool_t THaRunBase::IsOpen() const
 void THaRunBase::Print( Option_t* opt ) const
 {
   // Print definition of run
-  TNamed::Print( opt );
-  cout << "Run number: " << fNumber << endl;
-  cout << "Run date:   " << fDate.AsString() << endl;
-  cout << "Requested event range: " << fEvtRange[0] << "-"
-       << fEvtRange[1] << endl;
+  THaPrintOption sopt(opt);
+  sopt.ToUpper();
+  if( sopt.Contains("NAMEDESC") ) {
+    cout << "\"" << GetName() << "\"";
+    if( strcmp( GetTitle(), "") != 0 )
+      cout << "  \"" << GetTitle() << "\"";
+    return;
+  }
 
-  TString sopt(opt);
-  if( sopt == "STARTINFO" )
+  cout << IsA()->GetName() << "  \"" << GetName() << "\"";
+  if( strcmp( GetTitle(), "") != 0 )
+    cout << "  \"" << GetTitle() << "\"";
+  cout << endl;
+  cout << "Run number:   " << fNumber << endl;
+  cout << "Run date:     " << fDate.AsString() << endl;
+  cout << "Data version: " << fDataVersion << endl;
+  cout << "Requested event range: ";
+  if( std::equal(begin(fEvtRange), end(fEvtRange), begin(DEFEVTRANGE)) )
+    cout << "all";
+  else
+    cout << fEvtRange[0] << "-" << fEvtRange[1];
+  cout << endl;
+
+  if( sopt.Contains("STARTINFO") )
     return;
 
   cout << "Analyzed events:       " << fNumAnalyzed << endl;
   cout << "Assume Date:           " << fAssumeDate << endl;
   cout << "Database read:         " << fDBRead << endl;
-  cout << "Initialized  :         " << fIsInit << endl;
-  cout << "Opened       :         " << fOpened << endl;
+  cout << "Initialized:           " << fIsInit << endl;
+  cout << "Opened:                " << fOpened << endl;
   cout << "Date set/read/req:     "
        << HasInfo(kDate) << " " << HasInfoRead(kDate) << " "
        << (Bool_t)((kDate & fDataRequired) == kDate) << endl;
@@ -392,6 +434,9 @@ void THaRunBase::Print( Option_t* opt ) const
   cout << "Prescales set/rd/req:  "
        << HasInfo(kPrescales) << " " << HasInfoRead(kPrescales) << " "
        << (Bool_t)((kPrescales & fDataRequired) == kPrescales) << endl;
+  cout << "DAQInfo set/rd/req:    "
+       << HasInfo(kDAQInfo) << " " << HasInfoRead(kDAQInfo) << " "
+       << (Bool_t)((kDAQInfo & fDataRequired) == kDAQInfo) << endl;
 
   if( fParam )
     fParam->Print(opt);
@@ -420,15 +465,18 @@ Int_t THaRunBase::ReadDatabase()
   }
 
   Int_t st = fParam->ReadDatabase(fDate);
-  if( st )
-    return st;
+  if( st ) {
+    Error( here, "Failed to read run database, error = %d. "
+                 "Cannot continue. Check for typos and ill-formed lines.", st);
+    return READ_FATAL;
+  }
 
   fDBRead = true;
   return READ_OK;
 }
 
 //_____________________________________________________________________________
-Int_t THaRunBase::ReadInitInfo()
+Int_t THaRunBase::ReadInitInfo( Int_t /*level*/ )
 {
   // Read initial information from the run data source.
   // Internal function called by Init(). The default version checks
@@ -450,9 +498,9 @@ void THaRunBase::SetDate( const TDatime& date )
 
   if( fDate != date ) {
     fDate = date;
-    fIsInit = kFALSE;
+    fIsInit = false;
   }
-  fAssumeDate = kTRUE;
+  fAssumeDate = true;
   fDataSet |= kDate;
 }
 
@@ -462,15 +510,7 @@ void THaRunBase::SetDate( UInt_t tloc )
   // Set timestamp of this run to 'tloc' which is in Unix time
   // format (number of seconds since 01 Jan 1970).
 
-#if ROOT_VERSION_CODE >= ROOT_VERSION(3,1,6)
   TDatime date( tloc );
-#else
-  time_t t = tloc;
-  struct tm* tp = localtime(&t);
-  TDatime date;
-  date.Set( tp->tm_year, tp->tm_mon+1, tp->tm_mday,
-	    tp->tm_hour, tp->tm_min, tp->tm_sec );
-#endif
   SetDate( date );
 }
 
@@ -491,7 +531,7 @@ void THaRunBase::SetDataRequired( UInt_t mask )
   // run->SetDataRequired( THaRunBase::kDate );
   //
 
-  UInt_t all_info = kDate | kRunNumber | kRunType | kPrescales;
+  UInt_t all_info = kDate | kRunNumber | kRunType | kPrescales | kDAQInfo;
   if( (mask & all_info) != mask ) {
     Warning( "THaRunBase::SetDataRequired", "Illegal bit(s) 0x%x in bitmask "
 	     "argument ignored. See EInfoType.", (mask & ~all_info) );
@@ -535,7 +575,7 @@ void THaRunBase::SetLastEvent( UInt_t n )
 }
 
 //_____________________________________________________________________________
-void THaRunBase::SetNumber( Int_t number )
+void THaRunBase::SetNumber( UInt_t number )
 {
   // Change/set the number of the Run.
 
@@ -545,7 +585,7 @@ void THaRunBase::SetNumber( Int_t number )
 }
 
 //_____________________________________________________________________________
-void THaRunBase::SetType( Int_t type )
+void THaRunBase::SetType( UInt_t type )
 {
   // Set run type
   fType = type;
@@ -558,6 +598,39 @@ void THaRunBase::SetRunParamClass( const char* classname )
   // Set class of run parameters to use
 
   fRunParamClass = classname;
+}
+
+//_____________________________________________________________________________
+size_t THaRunBase::GetNConfig() const
+{
+  auto* ifo = DAQInfoExtra::GetFrom(fExtra);
+  if( !ifo )
+    return 0;
+  return ifo->strings.size();
+}
+
+//_____________________________________________________________________________
+const string& THaRunBase::GetDAQConfig( size_t i ) const
+{
+  static const string nullstr;
+  auto* ifo = DAQInfoExtra::GetFrom(fExtra);
+  if( !ifo || i >= ifo->strings.size() )
+    return nullstr;
+  return ifo->strings[i];
+}
+
+//_____________________________________________________________________________
+const string& THaRunBase::GetDAQInfo( const std::string& key ) const
+{
+  static const string nullstr;
+  auto* ifo = DAQInfoExtra::GetFrom(fExtra);
+  if( !ifo )
+    return nullstr;
+  const auto& keyval = ifo->keyval;
+  auto it = keyval.find(key);
+  if( it == keyval.end() )
+    return nullstr;
+  return it->second;
 }
 
 //_____________________________________________________________________________

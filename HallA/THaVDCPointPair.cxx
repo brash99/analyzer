@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <algorithm>
 
 using namespace std;
 using namespace VDC;
@@ -38,10 +39,10 @@ void THaVDCPointPair::Associate( THaTrack* track )
 
   THaVDCPoint* point[2] = { fLowerPoint, fUpperPoint };
 
-  for( int i=0; i<2; i++ ) {
-    point[i]->SetTrack( track );
-    point[i]->GetUCluster()->SetTrack( track );
-    point[i]->GetVCluster()->SetTrack( track );
+  for( auto& p : point ) {
+    p->SetTrack(track);
+    p->GetUCluster()->SetTrack(track);
+    p->GetVCluster()->SetTrack(track);
   }
 }
 
@@ -56,8 +57,8 @@ chi2_t THaVDCPointPair::CalcChi2() const
       fUpperPoint->GetUCluster(), fUpperPoint->GetVCluster() };
 
   chi2_t res(0,0);
-  for( int i=0; i<4; i++ ) {
-    res = res + clust[i]->CalcDist();
+  for( auto& cl : clust ) {
+    res = res + cl->CalcDist();
   }
   return res;
 }
@@ -71,8 +72,7 @@ Int_t THaVDCPointPair::Compare( const TObject* obj ) const
   if( !obj || IsA() != obj->IsA() )
     return -1;
 
-  const THaVDCPointPair* rhs = static_cast<const THaVDCPointPair*>( obj );
-
+  const auto *rhs = static_cast<const THaVDCPointPair*>( obj );
   if( fError < rhs->fError )
     return -1;
   if( fError > rhs->fError )
@@ -135,11 +135,9 @@ Bool_t THaVDCPointPair::HasUsedCluster() const
     { fLowerPoint->GetUCluster(), fLowerPoint->GetVCluster(),
       fUpperPoint->GetUCluster(), fUpperPoint->GetVCluster() };
 
-  for( int i=0; i<4; i++ ) {
-    if( clust[i]->GetPointPair() != 0 )
-      return kTRUE;
-  }
-  return kFALSE;
+  return any_of(clust, clust + 4, []( const THaVDCCluster* cl ) {
+    return (cl->GetPointPair() != nullptr);
+  });
 }
 
 //_____________________________________________________________________________
@@ -209,11 +207,12 @@ void THaVDCPointPair::Use()
 }
 
 //_____________________________________________________________________________
-void THaVDCPointPair::Release()
-{
-  // Mark this track pair as unused
-
-}
+//void THaVDCPointPair::Release()
+//{
+//  // Mark this track pair as unused
+//
+//  //TODO
+//}
 
 ///////////////////////////////////////////////////////////////////////////////
 ClassImp(THaVDCPointPair)

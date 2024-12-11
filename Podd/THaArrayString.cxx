@@ -96,12 +96,12 @@ Int_t THaArrayString::Parse( const char* string )
 
   static const size_t MAXLEN = 255;
   bool changed = false, dyn = false;
-  char *str = 0, *s, *t;
+  char *str = nullptr, *s, *t;
   const char *cs;
   size_t len;
   Int_t ncomma = 0, nl = 0, nr = 0;
   Int_t j;
-  Long64_t llen;;
+  Long64_t llen;
 
   if( !string || !*string ) {
     // No string or empty string?
@@ -293,4 +293,4 @@ void THaArrayString::Print( Option_t* option ) const
   }
 }
 //_____________________________________________________________________________
-ClassImp(THaArrayString);
+ClassImp(THaArrayString)

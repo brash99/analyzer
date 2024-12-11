@@ -26,14 +26,16 @@ CodaRawDecoder::CodaRawDecoder()
   // Register standard global variables for event header data
   if( gHaVars ) {
     VarDef vars[] = {
-        { "runnum",    "Run number",     kInt,    0, &run_num },
-        { "runtype",   "CODA run type",  kInt,    0, &run_type },
+        { "runnum",    "Run number",     kUInt,   0, &run_num },
+        { "runtype",   "CODA run type",  kUInt,   0, &run_type },
         { "runtime",   "CODA run time",  kULong,  0, &fRunTime },
-        { "evnum",     "Event number",   kInt,    0, &event_num },
-        { "evtyp",     "Event type",     kInt,    0, &event_type },
-        { "evlen",     "Event Length",   kInt,    0, &event_length },
+        { "evnum",     "Event number",   kUInt,   0, &event_num },
+        { "evtyp",     "Event type",     kUInt,   0, &event_type },
+        { "evlen",     "Event length",   kUInt,   0, &event_length },
         { "evtime",    "Event time",     kULong,  0, &evt_time },
-        { 0 }
+        { "datatype",  "Data type",      kUInt,   0, &data_type },
+        { "trigbits",  "Trigger bits",   kUInt,   0, &trigger_bits },
+        { nullptr }
     };
     TString prefix("g");
     // Prevent global variable clash if there are several instances of us
@@ -59,18 +61,6 @@ CodaRawDecoder::~CodaRawDecoder()
   }
 }
 
-//_____________________________________________________________________________
-Int_t CodaRawDecoder::init_cmap_openfile( FILE*& fi, TString& fname )
-{
-  // Use the analyzer file name search logic to find the crate map database file
-
-  const char* const here = "CodaRawDecoder::init_cmap";
-
-  TDatime date(GetRunTime());    //FIXME: replace with TTimeStamp
-  fi = THaAnalysisObject::OpenFile(fCrateMapName,date,here,"r",0);
-  fname = "db_" + fCrateMapName + ".dat";
-  return 1;
-}
 //_____________________________________________________________________________
 
 } // namespace Podd

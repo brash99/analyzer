@@ -22,24 +22,22 @@
 #include "TError.h"
 #include "TVirtualMutex.h"
 #include "TMath.h"
+#include "DataType.h"
+#include "Helper.h"
 
-#include <iostream>
 #include <cstring>
 #include <cassert>
 #include <algorithm>
 #include <numeric>
+#include <vector>
 
 using namespace std;
 
 const Option_t* const THaFormula::kPRINTFULL  = "FULL";
 const Option_t* const THaFormula::kPRINTBRIEF = "BRIEF";
 
-static const Double_t kBig = 1e38; // Error value
-
 enum EFuncCode { kLength, kSum, kMean, kStdDev, kMax, kMin,
 		 kGeoMean, kMedian, kIteration, kNumSetBits };
-
-#define ALL(c) (c).begin(), (c).end()
 
 //_____________________________________________________________________________
 static inline Int_t NumberOfSetBits( UInt_t v )
@@ -63,11 +61,12 @@ static inline Int_t NumberOfSetBits( ULong64_t v )
 }
 
 //_____________________________________________________________________________
-THaFormula::THaFormula() : TFormula(), fVarList(0), fCutList(0), fInstance(0)
+THaFormula::THaFormula() :
+  TFormula(), fVarList(nullptr), fCutList(nullptr), fInstance(0)
 {
   // Default constructor
 
-  Init( 0, 0 );
+  Init( nullptr, nullptr );
 }
 
 //_____________________________________________________________________________
@@ -130,19 +129,19 @@ Int_t THaFormula::Init( const char* name, const char* expression )
   }
   chaine.ReplaceAll("**","^");
 
-  Bool_t gausNorm = kFALSE, landauNorm = kFALSE, linear = kFALSE;
+  Bool_t gausNorm = false, landauNorm = false, linear = false;
 
   //special case for functions for linear fitting
   if (chaine.Contains("++"))
-    linear = kTRUE;
+    linear = true;
   // special case for normalized gaus
   if (chaine.Contains("gausn")) {
-    gausNorm = kTRUE;
+    gausNorm = true;
     chaine.ReplaceAll("gausn","gaus");
   }
   // special case for normalized landau
   if (chaine.Contains("landaun")) {
-    landauNorm = kTRUE;
+    landauNorm = true;
     chaine.ReplaceAll("landaun","landau");
   }
   SetTitle(chaine.Data());
@@ -165,10 +164,7 @@ THaFormula::THaFormula( const THaFormula& rhs ) :
 }
 
 //_____________________________________________________________________________
-THaFormula::~THaFormula()
-{
-  // Destructor
-}
+THaFormula::~THaFormula() = default;
 
 //_____________________________________________________________________________
 THaFormula& THaFormula::operator=( const THaFormula& rhs )
@@ -187,7 +183,7 @@ THaFormula& THaFormula::operator=( const THaFormula& rhs )
 THaFormula::FVarDef_t::FVarDef_t( const FVarDef_t& rhs )
   : type(rhs.type), obj(rhs.obj), index(rhs.index)
 {
-  if( (type == kFormula || type == kVarFormula) && rhs.obj != 0 )
+  if( (type == kFormula || type == kVarFormula) && rhs.obj != nullptr )
     obj = new THaFormula(*static_cast<THaFormula*>(rhs.obj));
 }
 
@@ -198,7 +194,7 @@ THaFormula::FVarDef_t& THaFormula::FVarDef_t::operator=( const FVarDef_t& rhs )
     if( type == kFormula || type == kVarFormula )
       delete static_cast<THaFormula*>(obj);
     type = rhs.type;
-    if( (type == kFormula || type == kVarFormula) && rhs.obj != 0 )
+    if( (type == kFormula || type == kVarFormula) && rhs.obj != nullptr )
       obj = new THaFormula(*static_cast<THaFormula*>(rhs.obj));
     else
       obj = rhs.obj;
@@ -207,7 +203,6 @@ THaFormula::FVarDef_t& THaFormula::FVarDef_t::operator=( const FVarDef_t& rhs )
   return *this;
 }
 
-#if __cplusplus >= 201103L
 //_____________________________________________________________________________
 THaFormula::FVarDef_t::FVarDef_t( FVarDef_t&& rhs ) noexcept
   : type(rhs.type), obj(rhs.obj), index(rhs.index)
@@ -228,7 +223,6 @@ THaFormula::FVarDef_t& THaFormula::FVarDef_t::operator=( FVarDef_t&& rhs ) noexc
   }
   return *this;
 }
-#endif
 
 //_____________________________________________________________________________
 THaFormula::FVarDef_t::~FVarDef_t()
@@ -253,7 +247,7 @@ Int_t THaFormula::Compile( const char* expression )
 
   SetBit(kError, (status != 0));
   if( !IsError() ) {
-    assert( fNval+fNstring == (Int_t)fVarDef.size() );
+    assert( fNval+fNstring - fVarDef.size() == 0 );
     assert( fNstring >= 0 && fNval >= 0 );
     // If the formula is good, then fix the variable counters that TFormula
     // may have messed with when reverting lone kDefinedString variables to
@@ -262,7 +256,7 @@ Int_t THaFormula::Compile( const char* expression )
     // that the loops in EvalPar calculate all the values. This is inefficient,
     // but the best we can do with the implementation of TFormula.
     if( fNstring > 0 && fNval > 0 )
-      fNval = fNstring = fVarDef.size();
+      fNval = fNstring = static_cast<Int_t>(fVarDef.size());
   }
   return status;
 }
@@ -276,7 +270,7 @@ char* THaFormula::DefinedString( Int_t i )
   assert( i>=0 && i<(Int_t)fVarDef.size() );
   const FVarDef_t& def = fVarDef[i];
   if( def.type == kString ) {
-    const THaVar* pvar = static_cast<const THaVar*>( def.obj );
+    const auto* pvar = static_cast<const THaVar*>( def.obj );
     char** ppc = (char**)pvar->GetValuePointer(); //truly gruesome cast
     return *ppc;
   }
@@ -300,10 +294,7 @@ Double_t THaFormula::DefinedValue( Int_t i )
   // kCutScaler and kCutNCalled give # times a cut passed and # times
   // a cut has been evaluated.  These types can only exist if hcana's
   // THcFormula is used.
-  // 
-
-  typedef vector<Double_t>::size_type vsiz_t;
-  //  typedef vector<Double_t>::iterator  viter_t;
+  //
 
   assert( i>=0 && i<(Int_t)fVarDef.size() );
 
@@ -316,7 +307,7 @@ Double_t THaFormula::DefinedValue( Int_t i )
   case kString:
   case kArray:
     {
-      const THaVar* var = static_cast<const THaVar*>(def.obj);
+      const auto* var = static_cast<const THaVar*>(def.obj);
       assert(var);
       Int_t index = (def.type == kArray) ? fInstance : def.index;
       assert(index >= 0);
@@ -329,31 +320,29 @@ Double_t THaFormula::DefinedValue( Int_t i )
     break;
   case kCut:
     {
-      const THaCut* cut = static_cast<const THaCut*>(def.obj);
+      const auto* cut = static_cast<const THaCut*>(def.obj);
       assert(cut);
       return cut->GetResult();
     }
     break;
   case kFunction:
     {
-      EFuncCode code = static_cast<EFuncCode>(def.index);
-      switch( code ) {
-      case kIteration:
+      auto code = static_cast<EFuncCode>(def.index);
+      if( code == kIteration )
 	return fInstance;
-      default:
+      else {
 	assert(false); // not reached
-	break;
       }
     }
     break;
   case kFormula:
   case kVarFormula:
     {
-      EFuncCode code = static_cast<EFuncCode>(def.index);
-      THaFormula* func = static_cast<THaFormula*>(def.obj);
+      auto  code = static_cast<EFuncCode>(def.index);
+      auto* func = static_cast<THaFormula*>(def.obj);
       assert(func);
 
-      vsiz_t ndata = func->GetNdata();
+      Int_t ndata = func->GetNdata();
       if( code == kLength )
 	return ndata;
 
@@ -366,16 +355,16 @@ Double_t THaFormula::DefinedValue( Int_t i )
       if( code == kNumSetBits ) {
 	// Number of set bits is intended for unsigned int-type expressions
 	y = func->EvalInstance(fInstance);
-	if( y > kMaxULong64 || y < kMinLong64 ) {
-	  return 0;
+	if( y > static_cast<double>(kMaxULong64>>11) || y < 0.0 ) {
+          return 0;
 	}
 	return NumberOfSetBits( static_cast<ULong64_t>(y) );
       }
 
       vector<Double_t> values;
       values.reserve(ndata);
-      for( vsiz_t i = 0; i < ndata; ++i ) {
-	values.push_back( func->EvalInstance(i) );
+      for( Int_t instance = 0; instance < ndata; ++instance ) {
+	values.push_back( func->EvalInstance(instance) );
       }
       if( func->IsInvalid() ) {
 	SetBit(kInvalid);
@@ -412,14 +401,14 @@ Double_t THaFormula::DefinedValue( Int_t i )
     break;
   case kCutScaler:
     {
-      const THaCut* cut = static_cast<const THaCut*>(def.obj);
+      const auto* cut = static_cast<const THaCut*>(def.obj);
       assert(cut);
       return cut->GetNPassed();
     }
     break;
   case kCutNCalled:
     {
-      const THaCut* cut = static_cast<const THaCut*>(def.obj);
+      const auto* cut = static_cast<const THaCut*>(def.obj);
       assert(cut);
       return cut->GetNCalled();
     }
@@ -439,7 +428,7 @@ static Int_t CheckBlacklistedNames( const TString& name )
   Ssiz_t len = name.Length();
 
   // gaus, xgaus, pol0 etc.
-  const char* blacklist[] = { "expo", "gaus", "landau", "pol", 0 };
+  const char* blacklist[] = { "expo", "gaus", "landau", "pol", nullptr };
   const char** item = blacklist;
   while( *item ) {
     TString func( *(item++) );
@@ -490,7 +479,7 @@ Int_t THaFormula::DefinedVariable( TString& name, Int_t& action )
   k = DefinedGlobalVariable( name );
   if( k>=0 ) {
     FVarDef_t& def = fVarDef[k];
-    const THaVar* pvar = static_cast<const THaVar*>( def.obj );
+    const auto* pvar = static_cast<const THaVar*>( def.obj );
     assert(pvar);
     // Interpret Char_t* variables as strings
     if( pvar->GetType() == kCharP ) {
@@ -548,7 +537,7 @@ Int_t THaFormula::DefinedCutWithType( TString& name, EVariableType type )
 	if( def.type == type && pcut == def.obj )
 	  return i;
       }
-      fVarDef.push_back( FVarDef_t(type,pcut,0) );
+      fVarDef.emplace_back(type, pcut, 0);
       return fVarDef.size()-1;
     }
   }
@@ -558,10 +547,11 @@ Int_t THaFormula::DefinedCutWithType( TString& name, EVariableType type )
 //_____________________________________________________________________________
 Int_t THaFormula::DefinedGlobalVariable( TString& name )
 {
-  return DefinedGlobalVariableExtraList(name, 0);
+  return DefinedGlobalVariableExtraList(name, nullptr);
 }
 //_____________________________________________________________________________
-Int_t THaFormula::DefinedGlobalVariableExtraList( TString& name, const THaVarList* extralist)
+Int_t THaFormula::DefinedGlobalVariableExtraList( TString& name,
+                                                  const THaVarList* extralist)
 {
   // Check if 'name' is a known global variable. If so, enter it in the
   // local list of variables used in this formula.
@@ -575,7 +565,7 @@ Int_t THaFormula::DefinedGlobalVariableExtraList( TString& name, const THaVarLis
   if( parsed_name.IsError() ) return -1;
 
   // Find the variable with this name in the extralist (Hall C Parameter)
-  THaVar* var = 0;
+  THaVar* var = nullptr;
   if( extralist ) {
     var = extralist->Find( parsed_name.GetName() );
   }
@@ -625,7 +615,7 @@ Int_t THaFormula::DefinedGlobalVariableExtraList( TString& name, const THaVarLis
     }
   }
   // If this is a new variable, add it to the list
-  fVarDef.push_back( FVarDef_t(type,var,index) );
+  fVarDef.emplace_back(type, var, index);
 
   return fVarDef.size()-1;
 }
@@ -636,13 +626,14 @@ Int_t THaFormula::DefinedSpecialFunction( TString& name )
 {
   // Check if 'name' is a predefined special function
 
-  struct FuncDef_t {
+  class FuncDef_t {
+  public:
     const char*    func;
     const char*    form;
     EVariableType  type;
     EFuncCode      code;
   };
-  const FuncDef_t func_defs[] = {
+  static const vector<FuncDef_t> func_defs = {
     { "Length$(",     "length$Form",  kFormula,    kLength },
     { "Sum$(",        "sum$Form",     kFormula,    kSum },
     { "Mean$(",       "mean$Form",    kFormula,    kMean },
@@ -651,18 +642,16 @@ Int_t THaFormula::DefinedSpecialFunction( TString& name )
     { "Min$(",        "min$Form",     kFormula,    kMin },
     { "GeoMean$(",    "geoMean$Form", kFormula,    kGeoMean },
     { "Median$(",     "median$Form",  kFormula,    kMedian },
-    { "Iteration$",   0,              kFunction,   kIteration },
-    { "NumSetBits$(", "numbits$Form", kVarFormula, kNumSetBits },
-    { 0 }
+    { "Iteration$",   nullptr,        kFunction,   kIteration },
+    { "NumSetBits$(", "numbits$Form", kVarFormula, kNumSetBits }
   };
-  const FuncDef_t* def = func_defs;
-  while( def->func ) {
-    if( def->form && name.BeginsWith(def->func) && name.EndsWith(")") ) {
+  for( const auto& def : func_defs ) {
+    if( def.form && name.BeginsWith(def.func) && name.EndsWith(")") ) {
       // Make a subformula for the argument, but don't register it with ROOT
-      TString subform = name( strlen(def->func), name.Length() );
+      TString subform = name( strlen(def.func), name.Length() );
       subform.Chop();
-      THaFormula* func = new THaFormula( def->form, subform, false,
-					 fVarList, fCutList );
+      auto* func = new THaFormula(def.form, subform, false,
+                                  fVarList, fCutList );
       if( func->IsError() ) {
 	delete func;
 	return -3;
@@ -677,23 +666,22 @@ Int_t THaFormula::DefinedSpecialFunction( TString& name )
 	  return -2;
 	}
       }
-      fVarDef.push_back( FVarDef_t(def->type, func, def->code) );
+      fVarDef.emplace_back(def.type, func, def.code);
       // Expand the function argument in case it is a recursive definition
-      name = def->func; name += func->GetExpFormula(); name += ")";
+      name = def.func; name += func->GetExpFormula(); name += ")";
       // Treat the kFormula-type functions as scalars, even though they might
       // cause this formula to have GetNdata() == 0 if they operate on an
       // empty array. kVarFormula however passes the array type right through.
-      if( def->type == kVarFormula ) {
+      if( def.type == kVarFormula ) {
 	SetBit( kArrayFormula, func->IsArray() );
 	SetBit( kVarArray, func->IsVarArray() );
       }
       return fVarDef.size()-1;
     }
-    else if( !def->form && name == def->func ) {
-      fVarDef.push_back( FVarDef_t(def->type, 0, def->code) );
+    else if( !def.form && name == def.func ) {
+      fVarDef.emplace_back(def.type, nullptr, def.code);
       return fVarDef.size()-1;
     }
-    ++def;
   }
   return -1;
 }
@@ -729,26 +717,6 @@ Double_t THaFormula::EvalInstance( Int_t instance )
 }
 
 //_____________________________________________________________________________
-#if ROOT_VERSION_CODE >= ROOT_VERSION(5,15,9) && \
-    ROOT_VERSION_CODE <  ROOT_VERSION(5,26,0)
-TString THaFormula::GetExpFormula( Option_t* ) const
-{
-  // Override ROOT's buggy TFormula::GetExpFormula because it does not handle
-  // kDefinedVariable and kDefinedString opcodes.
-  // This bug became apparent with the change to TFormula::Analyze on Mar 9, 2007:
-  // http://root.cern.ch/gitweb?p=root.git;a=commit;h=dd7d9db6417e006e575518b209a9d11f85726684
-  // (approximately ROOT 5.15/09)
-  // and was fixed on Aug 4, 2009 during the ROOT 5.26 development cycle:
-  // http://root.cern.ch/gitweb?p=root.git;a=commit;h=3c6b681704ba8a8d61c407fabb6be14722925d0b
-  // The workaround here is a quick fix that reverts to the old behavior before
-  // ROOT 5.15/09, i.e. does not allow more than one level of recursion for
-  // defining forumulas of formulas, but that's good enough for our purposes.
-
-  return fTitle;
-}
-#endif
-
-//_____________________________________________________________________________
 Int_t THaFormula::GetNdataUnchecked() const
 {
   // Return minimum of sizes of all referenced arrays
@@ -760,7 +728,7 @@ Int_t THaFormula::GetNdataUnchecked() const
     switch( def.type ) {
     case kArray:
       {
-	const THaVar* pvar = static_cast<const THaVar*>(def.obj);
+	const auto* pvar = static_cast<const THaVar*>(def.obj);
 	assert( pvar );
 	assert( pvar->IsArray() );
 	assert( pvar->GetNdim() > 0 );
@@ -770,7 +738,7 @@ Int_t THaFormula::GetNdataUnchecked() const
     case kFormula:
     case kVarFormula:
       {
-	THaFormula* func = static_cast<THaFormula*>(def.obj);
+	const auto* func = static_cast<THaFormula*>(def.obj);
 	assert( func );
 	Int_t nfunc = func->GetNdata();
 	if( def.type == kFormula && nfunc == 0 )

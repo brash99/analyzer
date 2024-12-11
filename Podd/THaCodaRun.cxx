@@ -10,6 +10,7 @@
 
 #include "THaCodaRun.h"
 #include "THaCodaData.h"
+#include "TClass.h"
 #include <cassert>
 
 using namespace std;
@@ -17,26 +18,22 @@ using namespace Decoder;
 
 //_____________________________________________________________________________
 THaCodaRun::THaCodaRun( const char* description )
-  : THaRunBase(description), fCodaData(0)
+  : THaRunBase(description), fCodaData(nullptr)
 {
   // Normal & default constructor
 }
 
 //_____________________________________________________________________________
 THaCodaRun::THaCodaRun( const THaCodaRun& rhs )
-  : THaRunBase(rhs), fCodaData(0)
+  : THaRunBase(rhs), fCodaData(nullptr)
 {
   // Normal & default constructor
 }
 
 //_____________________________________________________________________________
-THaCodaRun::~THaCodaRun()
-{
-  // Destructor. The CODA data will be closed by the THaCodaData
-  // destructor if necessary.
-
-  delete fCodaData; fCodaData = 0;
-}
+// Destructor. The CODA data will be closed by the THaCodaData
+// destructor if necessary.
+THaCodaRun::~THaCodaRun() = default;
 
 //_____________________________________________________________________________
 THaCodaRun& THaCodaRun::operator=(const THaRunBase& rhs)
@@ -45,7 +42,7 @@ THaCodaRun& THaCodaRun::operator=(const THaRunBase& rhs)
 
   if( this != &rhs ) {
     THaRunBase::operator=(rhs);
-    delete fCodaData; fCodaData = 0;
+    fCodaData = nullptr;
   }
   return *this;
 }
@@ -71,7 +68,7 @@ Int_t THaCodaRun::ReturnCode( Int_t coda_retcode )
   default:
     return READ_ERROR;
   }
-  return READ_FATAL; // not reached
+  // not reached
 }
 
 //_____________________________________________________________________________
@@ -79,22 +76,30 @@ Int_t THaCodaRun::Close()
 {
   // Close the CODA run
 
-  fOpened = kFALSE;
+  fOpened = false;
   if( !IsOpen() )
-    return 0;
+    return READ_OK;
 
   return ReturnCode( fCodaData->codaClose() );
 }
 
 //_____________________________________________________________________________
-Int_t THaCodaRun::GetCodaVersion()
+Int_t THaCodaRun::GetCodaVersion() // NOLINT(misc-no-recursion)
 {
   // Get CODA format version of current data source.
   // Returns either 2 or 3, or -1 on error (file not open, etc.)
 
-  assert(fCodaData);
   if( fDataVersion > 0 ) // Override with user-specified value
     return fDataVersion;
+  //FIXME Workaround for this function not being virtual
+  if( !fCodaData && IsA() != THaCodaRun::Class() ) {
+    if( IsA()->GetMethodAllAny("GetDataVersion") ==
+        THaCodaRun::Class()->GetMethodAllAny("GetDataVersion") ) {
+      return -1;
+    }
+    return GetDataVersion();
+  }
+  assert(fCodaData);
   return (fDataVersion = fCodaData->getCodaVersion());
 }
 
@@ -104,7 +109,7 @@ Int_t THaCodaRun::SetCodaVersion( Int_t vers )
   const char* const here = "THaCodaRun::SetCodaVersion";
 
   if (vers != 2 && vers != 3) {
-    Warning( here, "Illegal CODA version = %d. Must be 2 or 3.", vers );
+    Error( here, "Illegal CODA version = %d. Must be 2 or 3.", vers );
     return -1;
   }
   if( IsOpen() ) {

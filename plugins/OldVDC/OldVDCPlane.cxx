@@ -27,15 +27,15 @@
 #include "VarDef.h"
 #include "THaApparatus.h"
 #include "THaTriggerTime.h"
+#include "Helper.h"
 
 #include <cstring>
+#include <cassert>
 #include <vector>
 #include <iostream>
 #include <iomanip>
 
 using namespace std;
-
-#define ALL(c) (c).begin(), (c).end()
 
 // Defaults for typical VDC operation. Can be overridden via set functions.
 // Configurable via database in version 1.6 and later.
@@ -53,7 +53,7 @@ OldVDCPlane::OldVDCPlane( const char* name, const char* description,
     fMinTime(kDefaultMinTime), fMaxTime(kDefaultMaxTime),
     fFlags(0), fZ(0), fWBeg(0), fWSpac(0), fWAngle(0),
     fTDCRes(kDefaultTDCRes),
-    fDriftVel(0), /*fTable(NULL),*/ fTTDConv(0), fglTrg(0)
+    fDriftVel(0), /*fTable(nullptr),*/ fTTDConv(nullptr), fglTrg(0)
 {
   // Constructor
 
@@ -122,20 +122,20 @@ Int_t OldVDCPlane::DoReadDatabase( FILE* file, const TDatime& date )
 
   DBRequest request[] = {
     { "detmap",         &detmap,         kIntV },
-    { "nwires",         &fNelem,         kInt,     0, 0, -1 },
+    { "nwires",         &fNelem,         kInt,     0, false, -1 },
     { "wire.start",     &fWBeg,          kDouble },
-    { "wire.spacing",   &fWSpac,         kDouble,  0, 0, -1 },
-    { "wire.angle",     &fWAngle,        kDouble,  0, 0 },
-    { "wire.badlist",   &bad_wirelist,   kIntV,    0, 1 },
-    { "driftvel",       &fDriftVel,      kDouble,  0, 0, -1 },
-    { "maxgap",         &maxgap,         kInt,     0, 1, -1 },
-    { "tdc.min",        &mintime,        kInt,     0, 1, -1 },
-    { "tdc.max",        &maxtime,        kInt,     0, 1, -1 },
-    { "tdc.res",        &tdcres,         kDouble,  0, 0, -1 },
+    { "wire.spacing",   &fWSpac,         kDouble,  0, false, -1 },
+    { "wire.angle",     &fWAngle,        kDouble,  0, false },
+    { "wire.badlist",   &bad_wirelist,   kIntV,    0, true },
+    { "driftvel",       &fDriftVel,      kDouble,  0, false, -1 },
+    { "maxgap",         &maxgap,         kInt,     0, true, -1 },
+    { "tdc.min",        &mintime,        kInt,     0, true, -1 },
+    { "tdc.max",        &maxtime,        kInt,     0, true, -1 },
+    { "tdc.res",        &tdcres,         kDouble,  0, false, -1 },
     { "tdc.offsets",    &tdc_offsets,    kFloatV },
-    { "ttd.param",      &ttd_param,      kDoubleV, 0, 0, -1 },
-    { "description",    &fTitle,         kTString, 0, 1 },
-    { 0 }
+    { "ttd.param",      &ttd_param,      kDoubleV, 0, false, -1 },
+    { "description",    &fTitle,         kTString, 0, true },
+    { nullptr }
   };
 
   err = LoadDB( file, date, request, fPrefix );
@@ -180,12 +180,12 @@ Int_t OldVDCPlane::DoReadDatabase( FILE* file, const TDatime& date )
     fTDCRes = tdcres;
 
   if( fNMaxGap < 0 || fNMaxGap > 2 ) {
-    Error( Here(here), "Invalid max_gap = %d, must be betwwen 0 and 2. "
+    Error( Here(here), "Invalid max_gap = %d, must be between 0 and 2. "
 	   "Fix database.", fNMaxGap );
     return kInitError;
   }
   if( fMinTime < 0 || fMinTime > 4095 ) {
-    Error( Here(here), "Invalid min_time = %d, must be betwwen 0 and 4095. "
+    Error( Here(here), "Invalid min_time = %d, must be between 0 and 4095. "
 	   "Fix database.", fMinTime );
     return kInitError;
   }
@@ -206,7 +206,7 @@ Int_t OldVDCPlane::DoReadDatabase( FILE* file, const TDatime& date )
   
   // Initialize wires
   for (int i = 0; i < fNelem; i++) {
-    OldVDCWire* wire = new((*fWires)[i])
+    auto* wire = new((*fWires)[i])
       OldVDCWire( i, fWBeg+i*fWSpac, tdc_offsets[i], fTTDConv );
     if( bad_wires.find(i) != bad_wires.end() )
       wire->SetFlag(1);
@@ -243,7 +243,7 @@ Int_t OldVDCPlane::DoReadDatabase( FILE* file, const TDatime& date )
       { "Max gap in cluster",      &fNMaxGap,   kInt       },
       { "Min TDC raw time",        &fMinTime,   kInt       },
       { "Max TDC raw time",        &fMaxTime,   kInt       },
-      { 0 }
+      { nullptr }
     };
     DebugPrint( list );
   }
@@ -273,9 +273,6 @@ Int_t OldVDCPlane::DefineVariables( EMode mode )
 {
   // initialize global variables
 
-  if( mode == kDefine && fIsSetup ) return kOK;
-  fIsSetup = ( mode == kDefine );
-
   // Register variables in global list
 
   RVarDef vars[] = {
@@ -299,7 +296,7 @@ Int_t OldVDCPlane::DefineVariables( EMode mode )
     { "clchi2", "Cluster chi2",               "fClusters.OldVDCCluster.fChi2" },
     { "clndof", "Cluster NDoF",               "fClusters.OldVDCCluster.fNDoF" },
     { "cltcor", "Cluster Time correction",    "fClusters.OldVDCCluster.fTimeCorrection" },
-    { 0 }
+    { nullptr }
   };
   return DefineVarsFromList( vars, mode );
 
@@ -310,8 +307,7 @@ OldVDCPlane::~OldVDCPlane()
 {
   // Destructor.
 
-  if( fIsSetup )
-    RemoveVariables();
+  RemoveVariables();
   delete fWires;
   delete fHits;
   delete fClusters;
@@ -342,29 +338,28 @@ Int_t OldVDCPlane::Decode( const THaEvData& evData)
   // the event's T0-shift, due to the trigger-type
   // only an issue when adding in un-retimed trigger types
   Double_t evtT0=0;
-  if ( fglTrg && fglTrg->Decode(evData)==kOK ) evtT0 = fglTrg->TimeOffset();
+//  if ( fglTrg && fglTrg->Decode(evData)==kOK ) evtT0 = fglTrg->TimeOffset();
   
   Int_t nextHit = 0;
 
-  bool only_fastest_hit, no_negative;
+  bool only_fastest_hit{false}, no_negative{false};
   if( fVDC ) {
     // If true, add only the first (earliest) hit for each wire
     only_fastest_hit = fVDC->TestBit(OldVDC::kOnlyFastest);
     // If true, ignore negativ drift times completely
     no_negative      = fVDC->TestBit(OldVDC::kIgnoreNegDrift);
-  } else
-    only_fastest_hit = no_negative = false;
+  }
 
   // Loop over all detector modules for this wire plane
-  for (Int_t i = 0; i < fDetMap->GetSize(); i++) {
+  for (UInt_t i = 0; i < fDetMap->GetSize(); i++) {
     THaDetMap::Module * d = fDetMap->GetModule(i);
     
     // Get number of channels with hits
-    Int_t nChan = evData.GetNumChan(d->crate, d->slot);
-    for (Int_t chNdx = 0; chNdx < nChan; chNdx++) {
+    UInt_t nChan = evData.GetNumChan(d->crate, d->slot);
+    for (UInt_t chNdx = 0; chNdx < nChan; chNdx++) {
       // Use channel index to loop through channels that have hits
 
-      Int_t chan = evData.GetNextChan(d->crate, d->slot, chNdx);
+      UInt_t chan = evData.GetNextChan(d->crate, d->slot, chNdx);
       if (chan < d->lo || chan > d->hi)
 	continue; //Not part of this detector
 
@@ -377,12 +372,12 @@ Int_t OldVDCPlane::Decode( const THaEvData& evData)
       if( !wire || wire->GetFlag() != 0 ) continue;
 
       // Get number of hits for this channel and loop through hits
-      Int_t nHits = evData.GetNumHits(d->crate, d->slot, chan);
+      UInt_t nHits = evData.GetNumHits(d->crate, d->slot, chan);
    
       Int_t max_data = -1;
       Double_t toff = wire->GetTOffset();
 
-      for (Int_t hit = 0; hit < nHits; hit++) {
+      for (UInt_t hit = 0; hit < nHits; hit++) {
 	
 	// Now get the TDC data for this hit
 	Int_t data = evData.GetData(d->crate, d->slot, chan, hit);
@@ -437,7 +432,7 @@ Int_t OldVDCPlane::Decode( const THaEvData& evData)
       for (int c=0; c<ncol; c++) {
 	int ind = c*nextHit/ncol+i;
 	if (ind < nextHit) {
-	  OldVDCHit* hit = static_cast<OldVDCHit*>(fHits->At(ind));
+	  auto* hit = static_cast<OldVDCHit*>(fHits->At(ind));
 	  cout << "     " << setw(3) << hit->GetWireNum()
 	       << "    "  << setw(5) << hit->GetRawTime() << " ";
 	} else {
@@ -479,11 +474,11 @@ Int_t OldVDCPlane::FindClusters()
   Int_t wireNum  =   0;         // Current wire number
   Int_t ndif     =   0;         // Difference between wire numbers
   Int_t nHits    = GetNHits();  // Number of hits in the plane
-  OldVDCCluster* clust = NULL;  // Current cluster
+  OldVDCCluster* clust = nullptr;  // Current cluster
   OldVDCHit* hit;               // current hit
 
 //    Int_t minTime = 0;        // Smallest TDC time for a given cluster
-//    OldVDCHit * minHit = NULL; // Hit with the smallest TDC time for
+//    OldVDCHit * minHit = nullptr; // Hit with the smallest TDC time for
                              // a given cluster
   //  const Double_t sqrt2 = 0.707106781186547462;
 
@@ -535,6 +530,7 @@ Int_t OldVDCPlane::FindClusters()
       clust = new ( (*fClusters)[nextClust++] ) OldVDCCluster(this);
     }
     //Add hit to the cluster
+    assert(clust); // else logic error in ndif or fNMaxGap
     clust->AddHit(hit);
 
   } // End looping through hits
@@ -551,10 +547,10 @@ Int_t OldVDCPlane::FitTracks()
 {
   // Fit tracks to cluster positions and drift distances.
   
-  OldVDCCluster* clust;
   Int_t nClust = GetNClusters();
   for (int i = 0; i < nClust; i++) {
-    if( !(clust = static_cast<OldVDCCluster*>( (*fClusters)[i] )))
+    auto* clust = static_cast<OldVDCCluster*>( (*fClusters)[i] );
+    if( !clust )
       continue;
 
     // Convert drift times to distances.
