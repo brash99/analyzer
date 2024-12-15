@@ -1,0 +1,4 @@
+#!/bin/sh
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/local/analyzer -B builddir -S .
+cmake --build builddir -j8
+cmake --install builddir
