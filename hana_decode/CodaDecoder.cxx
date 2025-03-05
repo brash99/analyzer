@@ -411,8 +411,15 @@ Int_t CodaDecoder::trigBankDecode( const UInt_t* evbuffer )
     Error(here, "CODA 3 format error: Physics event with block size 0");
     return HED_ERR;
   }
+  auto tsroc = fMap->getTSROC();
+  if( tsroc >= MAXROC ) {
+    tsroc = THaCrateMap::DEFAULT_TSROC;
+    Warning( "THaCrateMap", "Did not find TSROC.  Using default %u\n"
+     " If this is incorrect, TS info (trigger bits etc.) will be unavailable.",
+     tsroc);
+  }
   try {
-    tbank.Fill(evbuffer + 2, block_size, fMap->getTSROC());
+    tbank.Fill(evbuffer + 2, block_size, tsroc);
   }
   catch( const coda_format_error& e ) {
     Error(here, "CODA 3 format error: %s", e.what() );
@@ -1076,6 +1083,9 @@ Int_t CodaDecoder::bank_decode( UInt_t roc, const UInt_t* evbuffer,
     pos += len+1;
   }
 
+  if( fDebug > 1 )
+    PrintBankInfo();
+
   for( auto slot : fMap->GetUsedSlots(roc) ) {
     assert(fMap->slotUsed(roc,slot));
     Int_t bank = fMap->getBank(roc, slot);
@@ -1420,7 +1430,7 @@ void CodaDecoder::ChkFbSlot( UInt_t roc, const UInt_t* evbuffer, UInt_t ipt,
     if( slot == 0 || slot >= MAXSLOT_FB )  // Used for diagnostic data words
       continue;
     UInt_t index = MAXSLOT_FB*roc + slot;
-    if( slot > 0 && index < MAXROCSLOT_FB )
+    if( index < MAXROCSLOT_FB )
       fbfound[index] = true;
   }
 }

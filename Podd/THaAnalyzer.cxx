@@ -47,9 +47,9 @@
 #include <iostream>
 #include <iomanip>
 #include <exception>
-#include <stdexcept>
 #include <algorithm>
 #include <vector>
+#include <ctime>
 
 using namespace std;
 using namespace Decoder;
@@ -87,6 +87,22 @@ inline size_t ListToVector( TList* lst, vector<T*>& vec )
   }
   return vec.size();
 }
+
+//_____________________________________________________________________________
+namespace {
+inline string CurrentTime()
+{
+  string timestr{"(unknown time}"};
+  time_t tloc = time(nullptr);
+  struct tm tmc{};
+  localtime_r(&tloc, &tmc);
+  char buff[32];
+  auto c = strftime(buff, 32, "%Y-%m-%d %H:%M:%S %z", &tmc);
+  if( c > 0 )
+    timestr = buff;
+  return timestr;
+}
+} // namespace
 
 //_____________________________________________________________________________
 THaAnalyzer::THaAnalyzer()
@@ -486,6 +502,12 @@ Int_t THaAnalyzer::Init( THaRunBase* run )
 }
 
 //_____________________________________________________________________________
+Int_t THaAnalyzer::Init( std::shared_ptr<THaRunBase> run )
+{
+  return Process(run.get());
+}
+
+//_____________________________________________________________________________
 Int_t THaAnalyzer::DoInit( THaRunBase* run )
 {
   // Internal function called by Init(). This is where the actual work is done.
@@ -519,19 +541,19 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
   //--- Open the output file if necessary so that Trees and Histograms
   //    are created on disk.
 
-  // File previously created and name changed?
-  if( fFile && fOutFileName != fFile->GetName()) {
-    // But -- we are analyzing split runs (so multiple initializations)
-    // and the tree's file has split too (so fFile has changed automatically)
-#if 0
-    if( fAnalysisStarted ) {
-      Error( here, "Cannot change output file name after analysis has been "
-	     "started. Close() first, then Init() or Process() again." );
-      return -11;
-    }
-    Close();
-#endif
-  }
+//  // File previously created and name changed?
+//  if( fFile && fOutFileName != fFile->GetName()) {
+//    // But -- we are analyzing split runs (so multiple initializations)
+//    // and the tree's file has split too (so fFile has changed automatically)
+//
+//    if( fAnalysisStarted ) {
+//      Error( here, "Cannot change output file name after analysis has been "
+//	     "started. Close() first, then Init() or Process() again." );
+//      return -11;
+//    }
+//    Close();
+//
+//  }
   if( !fFile ) {
     if( fOutFileName.IsNull() ) {
       Error( here, "Must specify an output file. Set it with SetOutFile()." );
@@ -569,7 +591,7 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
                   "permissions", fSummaryFileName.Data());
       return -15;
     }
-    ofs << "==== " << TDatime().AsString();
+    ofs << "==== " << CurrentTime() << endl;
     ofs.close();
   }
 
@@ -639,39 +661,38 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
   // Set run-level info that was retrieved when initializing the run.
   // In case we analyze a continuation segment, fEvtData may not see
   // the event(s) where these data come from (usually Prestart).
-  fEvData->SetRunInfo(run->GetNumber(),
-                      run->GetType(),
-                      run->GetDate().Convert());
+  WithDefaultTZ(ULong64_t run_tloc = run->GetDate().Convert());
+  fEvData->SetRunInfo(run->GetNumber(),run->GetType(), run_tloc);
 
   // Deal with the run.
   bool new_run   = ( !fRun || *fRun != *run );
   bool need_init = ( !fIsInit || new_event || new_output || new_run ||
 		     new_decoder || run_init );
 
-#if 0
-  // Warn user if trying to analyze the same run twice with overlapping
-  // event ranges.  Broken for split files now, so disable warning.
-  // FIXME: generalize event range business?
-  if( fAnalysisStarted && !new_run && fCountMode!=kCountRaw &&
-      ((fRun->GetLastEvent()  >= run->GetFirstEvent() &&
-	fRun->GetFirstEvent() <  run->GetLastEvent()) ||
-       (fRun->GetFirstEvent() <= run->GetLastEvent() &&
-	fRun->GetLastEvent()  >  run->GetFirstEvent()) )) {
-    Warning( here, "You are analyzing the same run twice with "
-	     "overlapping event ranges! prev: %d-%d, now: %d-%d",
-	     fRun->GetFirstEvent(), fRun->GetLastEvent(),
-	     run->GetFirstEvent(), run->GetLastEvent() );
-    if( !gROOT->IsBatch() ) {
-      cout << "Are you sure (y/n)?" << endl;
-      char c = 0;
-      while( c != 'y' && c != 'n' && c != EOF ) {
-	cin >> c;
-      }
-      if( c != 'y' && c != 'Y' )
-	return -240;
-    }
-  }
-#endif
+//
+//  // Warn user if trying to analyze the same run twice with overlapping
+//  // event ranges.  Broken for split files now, so disable warning.
+//  // FIXME: generalize event range business?
+//  if( fAnalysisStarted && !new_run && fCountMode!=kCountRaw &&
+//      ((fRun->GetLastEvent()  >= run->GetFirstEvent() &&
+//	fRun->GetFirstEvent() <  run->GetLastEvent()) ||
+//       (fRun->GetFirstEvent() <= run->GetLastEvent() &&
+//	fRun->GetLastEvent()  >  run->GetFirstEvent()) )) {
+//    Warning( here, "You are analyzing the same run twice with "
+//	     "overlapping event ranges! prev: %d-%d, now: %d-%d",
+//	     fRun->GetFirstEvent(), fRun->GetLastEvent(),
+//	     run->GetFirstEvent(), run->GetLastEvent() );
+//    if( !gROOT->IsBatch() ) {
+//      cout << "Are you sure (y/n)?" << endl;
+//      char c = 0;
+//      while( c != 'y' && c != 'n' && c != EOF ) {
+//	cin >> c;
+//      }
+//      if( c != 'y' && c != 'Y' )
+//	return -240;
+//    }
+//  }
+//
 
   // Make sure we save a copy of the run in fRun.
   // Note that the run may be derived from THaRunBase, so this is a bit tricky.
@@ -705,7 +726,7 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
                   "Check file/directory permissions", fSummaryFileName.Data());
       return -15;
     }
-    ofs << " " << (fAnalysisStarted ? "Continuing" : "Started") << " analysis"
+    ofs << (fAnalysisStarted ? "Continuing" : "Started") << " analysis"
         << ", run " << run->GetNumber() << endl;
     ofs << "Reading from ";
     // Redirect cout to ofs
@@ -731,7 +752,10 @@ Int_t THaAnalyzer::DoInit( THaRunBase* run )
 
   // Tell the decoder the run time. This will trigger decoder
   // initialization (reading of crate map data etc.)
-  fEvData->SetRunTime( run_time.Convert());
+//already done via SetRunInfo above
+//  gSystem->Setenv("TZ", Podd::GetDefaultTZ());
+//  fEvData->SetRunTime( run_time.Convert());
+//  gSystem->Setenv("TZ", cur_tz.Data());
 
   // Tell the decoder about the run's CODA version
   fEvData->SetDataVersion( run->GetDataVersion() );
@@ -1011,8 +1035,8 @@ void THaAnalyzer::PrintRunSummary() const
 {
   // Print general summary of run
 
-  cout << "==== " << TDatime().AsString()
-       << " Summary for run " << fRun->GetNumber()
+  cout << "==== " << CurrentTime() << endl
+       << "Summary for run " << fRun->GetNumber()
        << endl;
 }
 
@@ -1056,11 +1080,9 @@ void THaAnalyzer::PrintSummary( EExitStatus exit_status ) const
   if( fVerbose > 0 ) {
     PrintExitStatus(exit_status);
     PrintRunSummary();
-    if( exit_status != EExitStatus::kFatal ) {
-      PrintCounters();
-      if( fVerbose > 1 )
-        PrintCutSummary();
-    }
+    PrintCounters();
+    if( fVerbose > 1 )
+      PrintCutSummary();
   }
   PrintTimingSummary();
 
@@ -1529,7 +1551,7 @@ Int_t THaAnalyzer::Process( THaRunBase* run )
     //--- Skip events with errors, unless fatal
     if( status == THaRunBase::READ_FATAL ) {
       terminate = fatal = true;
-      continue;
+      break;
     }
     if( status != THaRunBase::READ_OK )
       continue;
@@ -1636,7 +1658,15 @@ Int_t THaAnalyzer::Process( THaRunBase* run )
 
   //keep the last run available
   //  gHaRun = nullptr;
+  if( exit_status == EExitStatus::kFatal )
+    return -SINT(fNev);
   return SINT(fNev);
+}
+
+//_____________________________________________________________________________
+Int_t THaAnalyzer::Process( std::shared_ptr<THaRunBase> run )
+{
+  return Process(run.get());
 }
 
 //_____________________________________________________________________________
