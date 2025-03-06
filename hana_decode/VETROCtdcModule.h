@@ -13,14 +13,17 @@
 //const Int_t NTDCCHAN = 192;
 //const Int_t MAXHIT   = 100;
 
+#define MAXHIT 100
+#define NTDCCHAN 192
+
 namespace Decoder {
 
 class VETROCtdcModule : public VmeModule {
 
 public:
 
-const Int_t NTDCCHAN = 192;
-const Int_t MAXHIT   = 100;
+//const Int_t NTDCCHAN = 192;
+//const Int_t MAXHIT   = 100;
 
    VETROCtdcModule() {};
    VETROCtdcModule(Int_t crate, Int_t slot);
